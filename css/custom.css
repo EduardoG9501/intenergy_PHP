@@ -1,0 +1,75 @@
+.btn-sucess-custom {
+    color: #fff;
+    background-color: #027338!important;
+    border-color: #ffffff!important;
+}
+.modal-header {
+    color: #fff!important; 
+    border-bottom: 1px solid #4e8307 !important;
+    background: #046b8b;
+} 
+.hash-custom{
+   font-size: 18px !important;
+} 
+.modal-header {
+    padding: 25PX !important; 
+}
+.modal-content{
+    width: 600px !important;
+    position: absolute !important;
+}
+.btn-primary {
+    background-color: #3c8dbc !important;
+    border-color: #367fa9 !important;
+    font-size: 14px !important;
+}
+.btn-success {
+    background-color: #10671e !important; 
+    border-color: #367fa9 !important;
+    font-size: 14px !important;
+}
+.bnt {
+    display: inline-block !important;
+    padding: 6px 12px !important;
+    margin-bottom: 0 !important;
+    font-size: 14px !important;
+    font-weight: 400 !important;
+    line-height: 1.42857143 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+    -ms-touch-action: manipulation !important;
+    touch-action: manipulation !important;
+    cursor: pointer !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+    background-image: none !important;
+    border: 1px solid transparent !important;
+    border-radius: 4px !important; 
+} 
+.label-custom
+{
+   color: #044e68 !Important;
+}
+.text-resumen {
+    background: #e1dbdb !important;
+    font-size: x-large !important;
+    color: #1e1e1e !important;
+    font-weight: bold !important;
+}
+/* Cambia el fondo y el color del texto de la pestaña activa */
+.nav-tabs > li.active > a,
+.nav-tabs > li.active > a:focus,
+.nav-tabs > li.active > a:hover {
+    background-color: #bde5f1 !important; /* azul, puedes cambiar el color */
+    color: #000000 !important;    /* texto blanco */
+    border-radius: 4px 4px 0 0 !important;
+    border: 1px solid #046b8b !important;
+}
+@media (min-width: 1200px) {
+    .container {
+        width: 1250px;
+    }
+}
