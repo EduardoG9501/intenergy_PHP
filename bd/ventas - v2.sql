@@ -579,7 +579,11 @@ INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre)
 VALUES ('REGISTROS GENERAL','EMPLEADOS','EMPLEADOS','empleados.php','fa fa-edit');
 INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre) 
 VALUES ('REGISTROS GENERAL','CARGOS EMPLEADOS','CARGOS EMPLEADOS','cargos.php','fa fa-edit');
- 
+INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre) 
+VALUES ('REGISTROS GENERAL','PEOYECTO','PEOYECTO','proyecto.php','fa fa-edit');
+INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre) 
+VALUES ('REGISTROS GENERAL','OBRA','OBRA','obra.php','fa fa-edit');
+  
 /*INVENTARIO*/
 INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre) 
 VALUES ('INVENTARIO','MOVIMIENTOS','MOVIMIENTOS','movimientos.php','glyphicon glyphicon-tasks'); 
@@ -650,6 +654,20 @@ CREATE TABLE permiso_bodega (
     estado BIT NOT NULL DEFAULT 1,
     FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario),
     FOREIGN KEY (id_bodega) REFERENCES bodegas(id_bodega)
+);
+
+CREATE TABLE proyecto ( 
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(250) NOT NULL, 
+  estado bit not null default 1,
+  fecha_registro DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE obra ( 
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(250) NOT NULL, 
+  estado bit not null default 1,
+  fecha_registro DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 DELIMITER //
