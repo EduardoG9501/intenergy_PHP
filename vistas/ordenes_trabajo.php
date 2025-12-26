@@ -265,17 +265,26 @@ label {
             if (selectBodega && orden.id_bodega_principal) {
                 selectBodega.value = orden.id_bodega_principal;
                 $('#id_bodega_principal').trigger('change');
-                // Si la orden está inactiva, deshabilitar el campo LUGAR
-                if (orden.estado == 0 || orden.estado === 0 || orden.estado === '0') {
-                    selectBodega.disabled = true;
-                } else {
-                    selectBodega.disabled = false;
+                // Deshabilitar el combo Lugar y el select2 correctamente
+                $('#id_bodega_principal').select2('destroy');
+                selectBodega.disabled = true;
+                $('#id_bodega_principal').select2({disabled: true});
+                // Agregar input hidden para enviar el valor aunque esté deshabilitado
+                let hiddenBodega = document.getElementById('hidden_bodega_principal');
+                if (!hiddenBodega) {
+                    hiddenBodega = document.createElement('input');
+                    hiddenBodega.type = 'hidden';
+                    hiddenBodega.id = 'hidden_bodega_principal';
+                    hiddenBodega.name = 'id_bodega_principal';
+                    selectBodega.parentNode.appendChild(hiddenBodega);
                 }
+                hiddenBodega.value = orden.id_bodega_principal;
             }
             if (orden.id_proyecto) $('#id_proyecto').val(orden.id_proyecto).trigger('change');
             if (orden.id_obra) $('#id_obra').val(orden.id_obra).trigger('change');
             // Preseleccionar el estado correcto
             if (orden.id_estado_orden) {
+                document.getElementById('id_estado_orden').value = orden.id_estado_orden;
                 const estadoSel = document.getElementById('id_estado_orden');
                 if (estadoSel) {
                     // Esperar a que las opciones estén cargadas
@@ -315,36 +324,53 @@ label {
                 }
                 $('#id_bodega_principal').trigger('change');
             }
+            // Habilitar combo Lugar y select2
+            selectBodega.disabled = false;
+            if ($ && $.fn.select2) {
+                $('#id_bodega_principal').select2('destroy');
+                $('#id_bodega_principal').select2({disabled: false});
+            }
+            // Seleccionar estado APROBADO (id=2) por defecto si existe
+            const estadoSel = document.getElementById('id_estado_orden');
+            if (estadoSel) {
+                let aprobadoOption = Array.from(estadoSel.options).find(opt => opt.value == '2');
+                if (aprobadoOption) {
+                    estadoSel.value = '2';
+                    $('#id_estado_orden').trigger('change');
+                } else {
+                    estadoSel.selectedIndex = 0;
+                }
+            }
         }
         actualizarCamposPorEstado();
     }
     function guardarOrden() {
         const formOrden = document.getElementById('formOrden');
+        // Validar que el combo Lugar tenga una opción seleccionada válida
+        const selectBodega = document.getElementById('id_bodega_principal');
+        if (!selectBodega.value) {
+            // Si no hay valor, seleccionar la primera opción disponible
+            if (selectBodega.options.length > 0) {
+                selectBodega.selectedIndex = 0;
+            }
+        }
         const datos = new FormData(formOrden);
         datos.append('action', 'guardar');
-        // Estado por defecto: APROBADO (buscar el id correspondiente)
-        fetch('../procesos/ordenestrabajo/orden_trabajo.php?action=estados')
-            .then(resp => resp.json())
-            .then(estados => {
-                const aprobado = estados.find(e => e.estado && e.estado.toUpperCase() === 'APROBADO');
-                if (aprobado) {
-                    datos.set('id_estado_orden', aprobado.id_estado_orden);
-                }
-                fetch('../procesos/ordenestrabajo/orden_trabajo.php', {
-                    method: 'POST',
-                    body: datos
-                })
-                .then(resp => resp.json())
-                .then(r => {
-                    Swal.fire({
-                            title: r.mensaje,
-                            icon: "success",
-                            draggable: true,
-                        }); 
-                    document.getElementById('formModal').style.display = 'none';
-                    cargarOrdenes();
-                });
-            });
+        // El estado se toma del formulario, no se fuerza a APROBADO
+        fetch('../procesos/ordenestrabajo/orden_trabajo.php', {
+            method: 'POST',
+            body: datos
+        })
+        .then(resp => resp.json())
+        .then(r => {
+            Swal.fire({
+                    title: r.mensaje,
+                    icon: "success",
+                    draggable: true,
+                }); 
+            document.getElementById('formModal').style.display = 'none';
+            cargarOrdenes();
+        });
     }
 
     function cargarBodegas() {
@@ -437,12 +463,14 @@ label {
     function actualizarCamposPorEstado() {
         const estado = document.getElementById('id_estado_orden').value;
         const desactivar = (estado === '5' || estado === '3');
+        //alert(estado);
+        //alert(desactivar);
         // Desactiva todos menos el botón Cancelar
         document.getElementById('identificador').disabled = desactivar;
         // document.getElementById('costo').disabled = desactivar;
         // document.getElementById('fecha_inicial').disabled = desactivar;
         // document.getElementById('fecha_final').disabled = desactivar;
-        document.getElementById('id_bodega_principal').disabled = desactivar;
+        // ...no modificar combo Lugar aquí...
         // document.getElementById('observacion').disabled = desactivar;
         document.getElementById('id_estado_orden').disabled = desactivar;
         document.getElementById('btnGuardar').disabled = desactivar;
