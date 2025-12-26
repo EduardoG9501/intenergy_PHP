@@ -54,14 +54,14 @@ if (!$acceso) {
          <caption><hash class="hash-custom">Ordenes de Trabajos</hash></caption>  
          <thead>
                 <tr>
-                    <th>Id</th>
-                    <th>Identificador</th>
-                    <th>Proyecto</th>
-                    <th>Obra</th>
-                    <th>Fecha</th>
-                    <th>Lugar</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
+                    <th>ID</th>
+                    <th>IDENTIFICADOR</th>
+                    <th>PROYECTO</th>
+                    <th>MANO DE LA OBRA</th> 
+                    <th>FECHA</th>
+                    <th>LUGAR</th>
+                    <th>ESTADO</th>
+                    <th>ACCIONES</th>
                 </tr>
             </thead>
             <tbody>
