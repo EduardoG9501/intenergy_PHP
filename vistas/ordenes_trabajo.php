@@ -1,13 +1,4 @@
-<script>
-    // Función para editar una orden
-    function editarOrden(id_orden) {
-        fetch(`../procesos/ordenestrabajo/orden_trabajo.php?action=obtener&id=${id_orden}`)
-            .then(resp => resp.json())
-            .then(orden => {
-                mostrarFormulario(orden);
-            });
-    }
-</script>
+
 <?php 
 ini_set('session.gc_maxlifetime', 14400); // 4 horas en segundos
  session_set_cookie_params(14400);         // 4 horas para la cookie de sesión
@@ -550,6 +541,14 @@ label {
         doc.save("OrdenesTrabajo.pdf");
     }
     // ---------------------------------------------
+ // Función para editar una orden
+    function editarOrden(id_orden) {
+        fetch(`../procesos/ordenestrabajo/orden_trabajo.php?action=obtener&id=${id_orden}`)
+            .then(resp => resp.json())
+            .then(orden => {
+                mostrarFormulario(orden);
+            });
+    }
 </script>
 <?php 
 }else{
