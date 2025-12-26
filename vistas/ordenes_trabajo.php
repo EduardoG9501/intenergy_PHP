@@ -1,3 +1,13 @@
+<script>
+    // Función para editar una orden
+    function editarOrden(id_orden) {
+        fetch(`../procesos/ordenestrabajo/orden_trabajo.php?action=obtener&id=${id_orden}`)
+            .then(resp => resp.json())
+            .then(orden => {
+                mostrarFormulario(orden);
+            });
+    }
+</script>
 <?php 
 ini_set('session.gc_maxlifetime', 14400); // 4 horas en segundos
  session_set_cookie_params(14400);         // 4 horas para la cookie de sesión
@@ -16,6 +26,13 @@ if (!$acceso) {
 <!DOCTYPE html>
     <html>
     <head>
+                <script>
+                // Inyectar la bodega activa de la sesión PHP a JS
+                var bodegaActivaSesion = null;
+                <?php if (isset($_SESSION['bodega_seleccionada'])): ?>
+                    bodegaActivaSesion = '<?php echo $_SESSION['bodega_seleccionada']; ?>';
+                <?php endif; ?>
+                </script>
         <title>OPERACIONES -> ORDEN DE TRABAJO</title>
        <?php 
           require_once "menu.php";   
@@ -37,15 +54,14 @@ if (!$acceso) {
          <caption><hash class="hash-custom">Ordenes de Trabajos</hash></caption>  
          <thead>
                 <tr>
-                    <th>Id</th>
-                    <th>Identificador</th>
-                    <th>Costo</th>
-                    <th>Fecha Inicial</th>
-                    <th>Fecha Final</th>
-                    <th>Lugar</th>
-                    <th>Ubicaciòn</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
+                    <th>ID</th>
+                    <th>IDENTIFICADOR</th>
+                    <th>PROYECTO</th>
+                    <th>MANO DE LA OBRA</th> 
+                    <th>FECHA</th>
+                    <th>LUGAR</th>
+                    <th>ESTADO</th>
+                    <th>ACCIONES</th>
                 </tr>
             </thead>
             <tbody>
@@ -66,24 +82,27 @@ if (!$acceso) {
                     <input type="hidden" id="id_orden" name="id_orden">
                     <div class="row">
                         <div class="col-sm-6">
+                            <label class="label-custom">PROYECTO:</label><br>
+                            <select class="form-control input-sm" id="id_proyecto" name="id_proyecto" required style="width:100%"></select>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="label-custom">NOMBRE DE OBRA:</label><br>
+                            <select class="form-control input-sm" id="id_obra" name="id_obra" required style="width:100%"></select>
+                        </div>
+                    </div>
+                    <div class="row" style="margin-top:10px;">
+                        <div class="col-sm-6">
                             <div id="grupoIdentificador" style="display:none;">
                                  <label class="label-custom">IDENTIFICADOR:   </label> 
                                  <input class="form-control input-sm" type="text" id="identificador" name="identificador" readonly>
                              </div>
-                            <label class="label-custom">COSTO:</label>
-                            <input class="form-control input-sm" type="number" id="costo" name="costo" required>
-                            <label class="label-custom">FECHA INICIO: </label>
-                            <input class="form-control input-sm" type="date" id="fecha_inicial" name="fecha_inicial" required>
-                            <label class="label-custom">FECHA FIN: </label>
-                            <input class="form-control input-sm" type="date" id="fecha_final" name="fecha_final" required>
+                            <label class="label-custom">FECHA:</label>
+                            <input class="form-control input-sm" type="date" id="fecha" name="fecha" required>
                         </div>
                         <div class="col-sm-6">  
                            <label class="label-custom">LUGAR: </label>
                             <select  style="width: 270px;" id="id_bodega_principal" name="id_bodega_principal" required></select>
-                            <label class="label-custom">UBICACION: </label>
-                            <select  style="width: 270px;"  id="id_bodega_secundaria" name="id_bodega_secundaria" required></select>
-                            <label class="label-custom">OBSERVACION:</label>
-                            <textarea style="width: 100%;" id="observacion" name="observacion"></textarea> 
+                               <!-- Observación eliminada -->
                              <!-- Estado -->                
                             <div id="grupoEstado" style="display:none;">
                               <label class="label-custom">ESTADO:</label>
@@ -155,6 +174,39 @@ label {
         cargarOrdenes();
         cargarBodegas();
         cargarEstados();
+        cargarProyectos();
+        cargarObras();
+    function cargarProyectos() {
+        fetch('../procesos/ordenestrabajo/orden_trabajo.php?action=proyectos')
+            .then(resp => resp.json())
+            .then(proyectos => {
+                const select = document.getElementById('id_proyecto');
+                select.innerHTML = '';
+                proyectos.forEach(p => {
+                    select.innerHTML += `<option value="${p.id}">${p.id} - ${p.nombre}</option>`;
+                });
+                $('#id_proyecto').select2({
+                    placeholder: 'Seleccione un proyecto',
+                    allowClear: true
+                });
+            });
+    }
+
+    function cargarObras() {
+        fetch('../procesos/ordenestrabajo/orden_trabajo.php?action=obras')
+            .then(resp => resp.json())
+            .then(obras => {
+                const select = document.getElementById('id_obra');
+                select.innerHTML = '';
+                obras.forEach(o => {
+                    select.innerHTML += `<option value="${o.id}">${o.id} - ${o.nombre}</option>`;
+                });
+                $('#id_obra').select2({
+                    placeholder: 'Seleccione una obra',
+                    allowClear: true
+                });
+            });
+    }
 
         const btnAgregar = document.getElementById('btnAgregar');
         const formModal = document.getElementById('formModal');
@@ -198,74 +250,113 @@ label {
         const grupoEstado = document.getElementById('grupoEstado');
         formModal.style.display = 'flex';
         let selectBodega = document.getElementById('id_bodega_principal');
-        let selectSecundaria = document.getElementById('id_bodega_secundaria');
+        // Bandera global para saber si es edición o nueva orden
+        window._editandoOrden = !!orden;
+        // Si es nueva orden, recargar bodegas para seleccionar la activa
+        if (!window._editandoOrden) cargarBodegas();
 
         if (orden) {
             formModalLabel.textContent = 'Editar Orden';
             grupoIdentificador.style.display = 'block'; // Mostrar solo al editar
             grupoEstado.style.display = 'block';        // Mostrar solo al editar
-            Object.keys(orden).forEach(k => {
-                if (document.getElementById(k)) {
-                    document.getElementById(k).value = orden[k];
-                }
-            });
-
-            // Principal
+            if (document.getElementById('id_orden')) document.getElementById('id_orden').value = orden.id_orden;
+            if (document.getElementById('identificador')) document.getElementById('identificador').value = orden.identificador;
+            if (document.getElementById('fecha')) document.getElementById('fecha').value = orden.fecha_inicial;
             if (selectBodega && orden.id_bodega_principal) {
                 selectBodega.value = orden.id_bodega_principal;
                 $('#id_bodega_principal').trigger('change');
-            }
-
-            // Secundaria (esperar a que el cambio de principal cargue las secundarias)
-            setTimeout(function() {
-                if (selectSecundaria && orden.id_bodega_secundaria) {
-                    selectSecundaria.value = orden.id_bodega_secundaria;
-                    $('#id_bodega_secundaria').val(orden.id_bodega_secundaria).trigger('change');
+                // Deshabilitar el combo Lugar y el select2 correctamente
+                $('#id_bodega_principal').select2('destroy');
+                selectBodega.disabled = true;
+                $('#id_bodega_principal').select2({disabled: true});
+                // Agregar input hidden para enviar el valor aunque esté deshabilitado
+                let hiddenBodega = document.getElementById('hidden_bodega_principal');
+                if (!hiddenBodega) {
+                    hiddenBodega = document.createElement('input');
+                    hiddenBodega.type = 'hidden';
+                    hiddenBodega.id = 'hidden_bodega_principal';
+                    hiddenBodega.name = 'id_bodega_principal';
+                    selectBodega.parentNode.appendChild(hiddenBodega);
                 }
-            }, 200); // Pequeño retardo para asegurar que se llenó el select
-
+                hiddenBodega.value = orden.id_bodega_principal;
+            }
+            if (orden.id_proyecto) $('#id_proyecto').val(orden.id_proyecto).trigger('change');
+            if (orden.id_obra) $('#id_obra').val(orden.id_obra).trigger('change');
+            // Preseleccionar el estado correcto
+            if (orden.id_estado_orden) {
+                document.getElementById('id_estado_orden').value = orden.id_estado_orden;
+                const estadoSel = document.getElementById('id_estado_orden');
+                if (estadoSel) {
+                    // Esperar a que las opciones estén cargadas
+                    setTimeout(() => {
+                        estadoSel.value = orden.id_estado_orden;
+                        $('#id_estado_orden').trigger('change');
+                    }, 200);
+                }
+            }
         } else {
             formModalLabel.textContent = 'Agregar Nueva Orden';
             document.getElementById('formOrden').reset();
             document.getElementById('id_orden').value = '';
             grupoIdentificador.style.display = 'none'; // Ocultar al crear nuevo
             grupoEstado.style.display = 'none';        // Ocultar al crear nuevo
-
             // Obtener fecha actual en formato YYYY-MM-DD
             const hoy = new Date();
             const yyyy = hoy.getFullYear();
             const mm = String(hoy.getMonth() + 1).padStart(2, '0');
             const dd = String(hoy.getDate()).padStart(2, '0');
             const fechaHoy = `${yyyy}-${mm}-${dd}`;
-
-            // Asignar la fecha por defecto
-            document.getElementById('fecha_inicial').value = fechaHoy;
-            document.getElementById('fecha_final').value = fechaHoy;
-
-            // Seleccionar SIEMPRE la primera opción en el select de bodega principal
+            document.getElementById('fecha').value = fechaHoy;
+            // Seleccionar la bodega activa de la sesión si existe
             if (selectBodega.options.length > 0) {
-                selectBodega.selectedIndex = 0;
+                let found = false;
+                if (typeof bodegaActivaSesion !== 'undefined' && bodegaActivaSesion) {
+                    for (let i = 0; i < selectBodega.options.length; i++) {
+                        if (selectBodega.options[i].value == bodegaActivaSesion) {
+                            selectBodega.selectedIndex = i;
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                if (!found) {
+                    selectBodega.selectedIndex = 0;
+                }
                 $('#id_bodega_principal').trigger('change');
-                // Selecciona también la secundaria igual a la principal
-                let principalValue = selectBodega.value;
-                if (selectSecundaria) {
-                    selectSecundaria.value = principalValue;
-                    $('#id_bodega_secundaria').val(principalValue).trigger('change');
+            }
+            // Habilitar combo Lugar y select2
+            selectBodega.disabled = false;
+            if ($ && $.fn.select2) {
+                $('#id_bodega_principal').select2('destroy');
+                $('#id_bodega_principal').select2({disabled: false});
+            }
+            // Seleccionar estado APROBADO (id=2) por defecto si existe
+            const estadoSel = document.getElementById('id_estado_orden');
+            if (estadoSel) {
+                let aprobadoOption = Array.from(estadoSel.options).find(opt => opt.value == '2');
+                if (aprobadoOption) {
+                    estadoSel.value = '2';
+                    $('#id_estado_orden').trigger('change');
+                } else {
+                    estadoSel.selectedIndex = 0;
                 }
             }
         }
         actualizarCamposPorEstado();
     }
-
-    function editarOrden(id_orden) {
-        fetch(`../procesos/ordenestrabajo/orden_trabajo.php?action=obtener&id_orden=${id_orden}`)
-            .then(resp => resp.json())
-            .then(orden => mostrarFormulario(orden));
-    }
     function guardarOrden() {
         const formOrden = document.getElementById('formOrden');
+        // Validar que el combo Lugar tenga una opción seleccionada válida
+        const selectBodega = document.getElementById('id_bodega_principal');
+        if (!selectBodega.value) {
+            // Si no hay valor, seleccionar la primera opción disponible
+            if (selectBodega.options.length > 0) {
+                selectBodega.selectedIndex = 0;
+            }
+        }
         const datos = new FormData(formOrden);
         datos.append('action', 'guardar');
+        // El estado se toma del formulario, no se fuerza a APROBADO
         fetch('../procesos/ordenestrabajo/orden_trabajo.php', {
             method: 'POST',
             body: datos
@@ -288,7 +379,6 @@ label {
             .then(bodegas => {
                 bodegasCache = bodegas; // Guardamos para reutilizar
                 const principal = document.getElementById('id_bodega_principal');
-                const secundaria = document.getElementById('id_bodega_secundaria');
 
                 // Solo principales
                 principal.innerHTML = '';
@@ -297,39 +387,21 @@ label {
                 });
                 $('#id_bodega_principal').select2();
 
-                // Limpiar secundaria inicialmente
-                secundaria.innerHTML = '';
-                $('#id_bodega_secundaria').select2();
-
-                // Cuando cambie principal, cargar la principal + secundarias hijas
-                principal.onchange = function() {
-                    let idPrincipal = principal.value;
-                    secundaria.innerHTML = '';
-
-                    // 1. Agrega la bodega principal seleccionada como opción
-                    const bodegaPrincipalObj = bodegas.find(b => b.id_bodega == idPrincipal);
-                    if (bodegaPrincipalObj) {
-                        secundaria.innerHTML += `<option value="${bodegaPrincipalObj.id_bodega}">${bodegaPrincipalObj.nombre} (Principal)</option>`;
+                // Seleccionar la bodega activa de la sesión si existe
+                let found = false;
+                if (typeof bodegaActivaSesion !== 'undefined' && bodegaActivaSesion) {
+                    for (let i = 0; i < principal.options.length; i++) {
+                        if (principal.options[i].value == bodegaActivaSesion) {
+                            principal.selectedIndex = i;
+                            found = true;
+                            break;
+                        }
                     }
-
-                    // 2. Agrega las bodegas secundarias hijas
-                    bodegas.filter(b =>
-                        b.es_bodega_secundaria === 1 &&
-                        b.id_bodega_principal == idPrincipal
-                    ).forEach(b => {
-                        secundaria.innerHTML += `<option value="${b.id_bodega}">${b.nombre}</option>`;
-                    });
-
-                    // Selecciona la principal como default
-                    secundaria.value = idPrincipal;
-                    $('#id_bodega_secundaria').val(idPrincipal).trigger('change');
-                };
-
-                // Disparar el evento al cargar para sincronizar
-                if (principal.options.length > 0) {
-                    principal.value = principal.options[0].value;
-                    principal.onchange();
                 }
+                if (!found && principal.options.length > 0) {
+                    principal.selectedIndex = 0;
+                }
+                $('#id_bodega_principal').trigger('change');
             });
     }
 
@@ -366,11 +438,10 @@ label {
             tr.innerHTML = `
                 <td>${orden.id_orden}</td>
                 <td>${orden.identificador}</td>
-                <td>${orden.costo}</td>
-                <td>${orden.fecha_inicial}</td>
-                <td>${orden.fecha_final}</td>
+                <td>${orden.proyecto_nombre || ''}</td>
+                <td>${orden.obra_nombre || ''}</td>
+                <td>${orden.fecha_inicial || orden.fecha || ''}</td>
                 <td>${orden.bodega_principal}</td>
-                <td>${orden.bodega_secundaria}</td>
                 <td>${orden.estado_nombre}</td>
                 <td>
                     <button class="btn btn-warning"  onclick="editarOrden(${orden.id_orden})"> <i class="glyphicon glyphicon-edit"></i></button>
@@ -392,14 +463,15 @@ label {
     function actualizarCamposPorEstado() {
         const estado = document.getElementById('id_estado_orden').value;
         const desactivar = (estado === '5' || estado === '3');
+        //alert(estado);
+        //alert(desactivar);
         // Desactiva todos menos el botón Cancelar
         document.getElementById('identificador').disabled = desactivar;
-        document.getElementById('costo').disabled = desactivar;
-        document.getElementById('fecha_inicial').disabled = desactivar;
-        document.getElementById('fecha_final').disabled = desactivar;
-        document.getElementById('id_bodega_principal').disabled = desactivar;
-        document.getElementById('id_bodega_secundaria').disabled = desactivar;
-        document.getElementById('observacion').disabled = desactivar;
+        // document.getElementById('costo').disabled = desactivar;
+        // document.getElementById('fecha_inicial').disabled = desactivar;
+        // document.getElementById('fecha_final').disabled = desactivar;
+        // ...no modificar combo Lugar aquí...
+        // document.getElementById('observacion').disabled = desactivar;
         document.getElementById('id_estado_orden').disabled = desactivar;
         document.getElementById('btnGuardar').disabled = desactivar;
         // El botón Cancelar queda activo
@@ -478,7 +550,7 @@ label {
         doc.save("OrdenesTrabajo.pdf");
     }
     // ---------------------------------------------
-</script> 
+</script>
 <?php 
 }else{
     header("location:../index.php");
