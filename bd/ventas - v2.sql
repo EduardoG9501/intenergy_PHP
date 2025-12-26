@@ -386,17 +386,20 @@ INSERT INTO estado_ordenes (estado) VALUES ('ANULADO');
 CREATE TABLE ordenes_trabajo (
     id_orden INT AUTO_INCREMENT PRIMARY KEY,
     identificador VARCHAR(10), -- Ejemplo: T001, T002 (puedes generarlo en el backend)
+    id_proyecto INT NOT NULL,
+    id_obra INT NOT NULL,
     costo DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    fecha_inicial DATE NOT NULL,
-    fecha_final DATE NOT NULL,
+    fecha_inicial DATE  NULL,
+    fecha_final DATE  NULL,
     id_bodega_principal INT NOT NULL,
-    id_bodega_secundaria INT NOT NULL,
+    id_bodega_secundaria INT NULL,
     observacion TEXT,
     id_estado_orden INT NOT NULL DEFAULT 1,
     fecha_graba DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     estado BIT NOT NULL DEFAULT 1,
+    FOREIGN KEY (id_proyecto) REFERENCES proyecto(id),
+    FOREIGN KEY (id_obra) REFERENCES obra(id),
     FOREIGN KEY (id_bodega_principal) REFERENCES bodegas(id_bodega),
-    FOREIGN KEY (id_bodega_secundaria) REFERENCES bodegas(id_bodega),
     FOREIGN KEY (id_estado_orden) REFERENCES estado_ordenes(id_estado_orden)
 );
 
@@ -418,7 +421,7 @@ CREATE TABLE solicitud_materiales (
     id_orden INT NOT NULL,                           -- Orden de trabajo aprobada
     fecha_solicitud DATE NOT NULL,                   -- Fecha de la solicitud
     id_bodega_principal INT NOT NULL,                -- Bodega principal (Lugar)
-    id_bodega_secundaria INT NOT NULL,               -- Bodega secundaria (Ubicación)
+    id_bodega_secundaria INT NULL,               -- Bodega secundaria (Ubicación)
     id_responsable_obra INT NOT NULL,                -- Responsable obra (id_empleados)
     id_entrega_articulos INT NOT NULL,               -- Responsable que entrega (id_empleados)
     id_recibe_articulos INT NOT NULL,                -- Responsable que recibe (id_empleados)
@@ -426,7 +429,6 @@ CREATE TABLE solicitud_materiales (
     id_estado_solicitud INT NOT NULL DEFAULT 1,      -- Estado de la solicitud
     FOREIGN KEY (id_orden) REFERENCES ordenes_trabajo(id_orden),
     FOREIGN KEY (id_bodega_principal) REFERENCES bodegas(id_bodega),
-    FOREIGN KEY (id_bodega_secundaria) REFERENCES bodegas(id_bodega),
     FOREIGN KEY (id_responsable_obra) REFERENCES empleados(id_empleados),
     FOREIGN KEY (id_entrega_articulos) REFERENCES empleados(id_empleados),
     FOREIGN KEY (id_recibe_articulos) REFERENCES empleados(id_empleados),
@@ -461,15 +463,14 @@ CREATE TABLE informe_trabajo (
     id_orden INT NOT NULL,   -- relación con ordenes_trabajo
     fecha DATE NOT NULL,
     id_bodega_principal INT NOT NULL,
-    id_bodega_secundaria INT NOT NULL,
+    id_bodega_secundaria INT NULL,
     lugar VARCHAR(150)  NULL, -- ejemplo: TROPACK
     observacion TEXT,
     fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     estado BIT NOT NULL DEFAULT 1, -- 1=activo, 0=inactivo
     FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario),
     FOREIGN KEY (id_orden) REFERENCES ordenes_trabajo(id_orden),
-    FOREIGN KEY (id_bodega_principal) REFERENCES bodegas(id_bodega),
-    FOREIGN KEY (id_bodega_secundaria) REFERENCES bodegas(id_bodega)
+    FOREIGN KEY (id_bodega_principal) REFERENCES bodegas(id_bodega)
 );
 
 -- Relación empleados internos
@@ -516,13 +517,12 @@ CREATE TABLE horas_trabajo (
     id_horas_trabajo INT AUTO_INCREMENT PRIMARY KEY,
     fecha DATE NOT NULL,
     id_bodega_principal INT NOT NULL,
-    id_bodega_secundaria INT NOT NULL,
+    id_bodega_secundaria INT  NULL,
     id_responsable_obra INT NOT NULL,  -- empleado responsable 
     observacion TEXT,
     fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     estado BIT NOT NULL DEFAULT 1,
     FOREIGN KEY (id_bodega_principal) REFERENCES bodegas(id_bodega),
-    FOREIGN KEY (id_bodega_secundaria) REFERENCES bodegas(id_bodega),
     FOREIGN KEY (id_responsable_obra) REFERENCES empleados(id_empleados)
 );
 
