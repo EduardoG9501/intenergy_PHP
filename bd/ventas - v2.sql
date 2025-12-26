@@ -580,7 +580,7 @@ VALUES ('REGISTROS GENERAL','EMPLEADOS','EMPLEADOS','empleados.php','fa fa-edit'
 INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre) 
 VALUES ('REGISTROS GENERAL','CARGOS EMPLEADOS','CARGOS EMPLEADOS','cargos.php','fa fa-edit');
 INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre) 
-VALUES ('REGISTROS GENERAL','PEOYECTO','PEOYECTO','proyecto.php','fa fa-edit');
+VALUES ('REGISTROS GENERAL','PROYECTO','PROYECTO','proyecto.php','fa fa-edit');
 INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre) 
 VALUES ('REGISTROS GENERAL','OBRA','OBRA','obra.php','fa fa-edit');
   
