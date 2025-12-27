@@ -50,7 +50,6 @@ if (!$acceso) {
                     <th>MANO DE LA OBRA</th> 
                     <th>FECHA</th>
                     <th>LUGAR</th>
-                    <th>ESTADO</th>
                     <th>ACCIONES</th>
                 </tr>
             </thead>
@@ -432,7 +431,6 @@ label {
                 <td>${orden.obra_nombre || ''}</td>
                 <td>${orden.fecha_inicial || orden.fecha || ''}</td>
                 <td>${orden.bodega_principal}</td>
-                <td>${orden.estado_nombre}</td>
                 <td>
                     <button class="btn btn-warning"  onclick="editarOrden(${orden.id_orden})"> <i class="glyphicon glyphicon-edit"></i></button>
                 </td>
