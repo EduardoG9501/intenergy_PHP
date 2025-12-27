@@ -72,7 +72,8 @@ class OrdenTrabajo {
                 id_obra='{$data['id_obra']}',
                 fecha_inicial='{$data['fecha']}',
                 id_bodega_principal='{$data['id_bodega_principal']}',
-                id_estado_orden='{$data['id_estado_orden']}'";
+                id_estado_orden='{$data['id_estado_orden']}',
+                observacion='" . mysqli_real_escape_string($conexion, $data['observacion']) . "'";
             if ($identificadorUpdate != "") {
                 $sql .= ", identificador='$identificadorUpdate'";
             }
@@ -80,7 +81,7 @@ class OrdenTrabajo {
             if (isset($data['estado'])) {
                 $sql .= ", estado='{$data['estado']}'";
             }
-            $sql .= " WHERE id_orden={$data['id_orden']}";
+            $sql .= " WHERE id_orden=" . intval($data['id_orden']);
             mysqli_query($conexion, $sql);
             return ['mensaje' => 'Orden editada correctamente'];
         } else {
@@ -102,8 +103,8 @@ class OrdenTrabajo {
             } else {
                 $identificador = $prefijo . $correlativo;
             }
-            $sql = "INSERT INTO ordenes_trabajo (identificador, id_proyecto, id_obra, fecha_inicial, id_bodega_principal, id_estado_orden, estado)
-                    VALUES ('$identificador', '{$data['id_proyecto']}', '{$data['id_obra']}', '{$data['fecha']}', '{$data['id_bodega_principal']}', '{$data['id_estado_orden']}', 1)";
+                $sql = "INSERT INTO ordenes_trabajo (identificador, id_proyecto, id_obra, fecha_inicial, id_bodega_principal, id_estado_orden, estado, observacion)
+                    VALUES ('$identificador', '{$data['id_proyecto']}', '{$data['id_obra']}', '{$data['fecha']}', '{$data['id_bodega_principal']}', '{$data['id_estado_orden']}', 1, '" . mysqli_real_escape_string($conexion, $data['observacion']) . "')";
             mysqli_query($conexion, $sql);
             return ['mensaje' => 'Orden agregada correctamente'];
         }

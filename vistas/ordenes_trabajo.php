@@ -551,4 +551,55 @@ label {
 }else{
     header("location:../index.php");
 }
+?>("Órdenes de Trabajo", 14, 18);
+        doc.autoTable({
+            head: [header],
+            body: bodyRows,
+            startY: 22,
+            styles: { fontSize: 10 },
+            headStyles: {
+                fillColor: [4, 107, 139],
+                textColor: [255, 255, 255],
+                fontStyle: 'bold'
+            }
+        });
+        doc.save("OrdenesTrabajo.pdf");
+    }
+    // ---------------------------------------------
+ // Función para editar una orden
+        // Función para PEDIDO DE MATERIALES
+        function pedidoMaterial(id_orden) {
+            Swal.fire({
+                title: 'PEDIDO DE MATERIALES',
+                text: `Funcionalidad para Pedido de Materiales de la Orden #${id_orden}`,
+                icon: 'info',
+                confirmButtonText: 'OK'
+            });
+            // Aquí puedes redirigir o abrir modal según lo que se requiera
+            // window.location.href = `ruta_a_pedido_materiales.php?id_orden=${id_orden}`;
+        }
+
+        // Función para EJECUCION DE OBRA
+        function ejecucionObra(id_orden) {
+            Swal.fire({
+                title: 'EJECUCION DE OBRA',
+                text: `Funcionalidad para Ejecución de Obra de la Orden #${id_orden}`,
+                icon: 'info',
+                confirmButtonText: 'OK'
+            });
+            // Aquí puedes redirigir o abrir modal según lo que se requiera
+            // window.location.href = `ruta_a_ejecucion_obra.php?id_orden=${id_orden}`;
+        }
+    function editarOrden(id_orden) {
+        fetch(`../procesos/ordenestrabajo/orden_trabajo.php?action=obtener&id=${id_orden}`)
+            .then(resp => resp.json())
+            .then(orden => {
+                mostrarFormulario(orden);
+            });
+    }
+</script>
+<?php 
+}else{
+    header("location:../index.php");
+}
 ?>
