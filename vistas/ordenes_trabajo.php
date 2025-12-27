@@ -89,14 +89,15 @@ if (!$acceso) {
                             <input class="form-control input-sm" type="date" id="fecha" name="fecha" required>
                         </div>
                         <div class="col-sm-6">  
-                           <label class="label-custom">LUGAR: </label>
-                            <select  style="width: 270px;" id="id_bodega_principal" name="id_bodega_principal" required></select>
-                               <!-- Observación eliminada -->
-                             <!-- Estado -->                
-                            <div id="grupoEstado" style="display:none;">
-                              <label class="label-custom">ESTADO:</label>
-                              <select style="width: 100%;" id="id_estado_orden" name="id_estado_orden" required></select>
-                            </div>
+                                                     <label class="label-custom">LUGAR: </label>
+                                                        <select  style="width: 270px;" id="id_bodega_principal" name="id_bodega_principal" required></select>
+                                                     <label class="label-custom" for="observacion">OBSERVACIÓN:</label>
+                                                     <textarea class="form-control input-sm" id="observacion" name="observacion" rows="2" style="resize:vertical;"></textarea>
+                                                         <!-- Estado -->                
+                                                        <div id="grupoEstado" style="display:none;">
+                                                            <label class="label-custom">ESTADO:</label>
+                                                            <select style="width: 100%;" id="id_estado_orden" name="id_estado_orden" required></select>
+                                                        </div>
                         </div>
                     </div>
                 </div>
@@ -283,6 +284,10 @@ label {
                     }, 200);
                 }
             }
+            // Mostrar observación al editar
+            if (document.getElementById('observacion')) {
+                document.getElementById('observacion').value = orden.observacion || '';
+            }
         } else {
             formModalLabel.textContent = 'Agregar Nueva Orden';
             document.getElementById('formOrden').reset();
@@ -432,7 +437,9 @@ label {
                 <td>${orden.fecha_inicial || orden.fecha || ''}</td>
                 <td>${orden.bodega_principal}</td>
                 <td>
-                    <button class="btn btn-warning"  onclick="editarOrden(${orden.id_orden})"> <i class="glyphicon glyphicon-edit"></i></button>
+                    <button class="btn btn-warning" onclick="editarOrden(${orden.id_orden})"> <i class="glyphicon glyphicon-edit"></i></button>
+                    <button class="btn btn-info" style="margin-left:3px;" onclick="pedidoMaterial(${orden.id_orden})">PEDIDO DE MATERIALES</button>
+                    <button class="btn btn-primary" style="margin-left:3px;" onclick="ejecucionObra(${orden.id_orden})">EJECUCION DE OBRA</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -459,7 +466,7 @@ label {
         // document.getElementById('fecha_inicial').disabled = desactivar;
         // document.getElementById('fecha_final').disabled = desactivar;
         // ...no modificar combo Lugar aquí...
-        // document.getElementById('observacion').disabled = desactivar;
+        // El campo observacion siempre habilitado
         document.getElementById('id_estado_orden').disabled = desactivar;
         document.getElementById('btnGuardar').disabled = desactivar;
         // El botón Cancelar queda activo
@@ -524,34 +531,6 @@ label {
 
         var doc = new window.jspdf.jsPDF();
         doc.text("Órdenes de Trabajo", 14, 18);
-        doc.autoTable({
-            head: [header],
-            body: bodyRows,
-            startY: 22,
-            styles: { fontSize: 10 },
-            headStyles: {
-                fillColor: [4, 107, 139],
-                textColor: [255, 255, 255],
-                fontStyle: 'bold'
-            }
-        });
-        doc.save("OrdenesTrabajo.pdf");
-    }
-    // ---------------------------------------------
- // Función para editar una orden
-    function editarOrden(id_orden) {
-        fetch(`../procesos/ordenestrabajo/orden_trabajo.php?action=obtener&id=${id_orden}`)
-            .then(resp => resp.json())
-            .then(orden => {
-                mostrarFormulario(orden);
-            });
-    }
-</script>
-<?php 
-}else{
-    header("location:../index.php");
-}
-?>("Órdenes de Trabajo", 14, 18);
         doc.autoTable({
             head: [header],
             body: bodyRows,
