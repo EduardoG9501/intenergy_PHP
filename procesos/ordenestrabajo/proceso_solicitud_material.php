@@ -101,7 +101,7 @@ switch ($action) {
 
             // 2. Crea el movimiento de salida, subtipo DESCARGO
             $id_tipo_movimiento = 2; // SALIDA
-            $id_sub_tipo_movimiento = 2; // DESCARGO
+            $id_sub_tipo_movimiento = 3; // DESCARGO
             $id_bodega = $datosSolicitud['id_bodega_principal'];
             $no_documento = 'SOL-'.$id;
             $fechaDocumento = date('Y-m-d');

@@ -640,7 +640,7 @@ CREATE TABLE stock_productos_bodega (
     cantidad DECIMAL(18,4) NOT NULL DEFAULT 0,
     fecha_actualizacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     estado BIT NOT NULL DEFAULT 1,
-    UNIQUE KEY (id_producto, id_bodega_principal, id_bodega_secundaria),
+    UNIQUE KEY (id_producto, id_bodega_principal),
     FOREIGN KEY (id_producto) REFERENCES articulos(id_producto),
     FOREIGN KEY (id_bodega_principal) REFERENCES bodegas(id_bodega),
     FOREIGN KEY (id_bodega_secundaria) REFERENCES bodegas(id_bodega)
