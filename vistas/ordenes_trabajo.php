@@ -50,7 +50,7 @@ if (!$acceso) {
                     <th>MANO DE LA OBRA</th> 
                     <th>FECHA</th>
                     <th>LUGAR</th>
-                    <th>ACCIONES</th>
+                    <th style="text-align: center;">ACCIONES</th>
                 </tr>
             </thead>
             <tbody>

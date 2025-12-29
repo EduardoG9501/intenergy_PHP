@@ -1,113 +1,118 @@
-<?php 
-	require_once "../../clases/Conexion.php";
-	$c= new conectar();
-	$conexion=$c->conexion(); 
-	$idmovimiento = $_GET['idmovimiento'];
-	$estado = $_GET['estado'];
-	$guardado = $_GET['guardado'];
-    ///echo($guardado);
-	/*Si el movimiento no ha sido guardado*/
-	if ($guardado=="'0'")
-	{
-      $sql="SELECT   det.id_movimientos_detalle_tmp id_movimiento_detalle,
-	               art.id_producto,
-	               art.nombre,
-				   det.lote,
-	               ROUND(det.precio,2) precio,
-				   ROUND(det.cantidad,2) cantidad,
-				   ROUND(det.subtotal,2) subtotal,
-				   ROUND(det.total,2) total,
-				   bod.nombreBodega,
-				   det.id_bodega_lugar,
-				   ROUND(det.decuento,2) decuento,
-				   ROUND(det.iva,2) iva
-		  from movimientos_detalle_tmp as det
-		  inner join articulos art on det.id_articulo= art.id_producto
-          inner join bodegas bod on  det.id_bodega_lugar= bod.id_bodega
-		  where id_movimiento =  $idmovimiento "; 
-	}
-	else{
-		/*Si el movimiento ya fue guardado*/
-		$sql="SELECT   det.id_movimiento_detalle id_movimiento_detalle,
-	               art.id_producto,
-	               art.nombre,
-				   det.lote,
-	               ROUND(det.precio,2) precio,
-				   ROUND(det.cantidad,2) cantidad,
-				   ROUND(det.subtotal,2) subtotal,
-				   ROUND(det.total,2) total,
-				   bod.nombreBodega,
-				   det.id_bodega_lugar,
-				   ROUND(det.decuento,2) decuento,
-				   ROUND(det.iva,2) iva
-		  from movimientos_detalle as det
-		  inner join articulos art on det.id_articulo= art.id_producto
-          inner join bodegas bod on  det.id_bodega_lugar= bod.id_bodega
-		  where id_movimiento =  $idmovimiento "; 
-	}
-	
-    
-	$resultListaArticulo=mysqli_query($conexion,$sql);
-	
-	 /*Se carga el valor del iva*/
-	 $sql ="SELECT monto
-		  from iva as det"; 
-            
-     $result  = mysqli_query($conexion,$sql);
-
-     if(mysqli_num_rows($result) > 0){   
-             while($row = $result->fetch_row()) {
-               $valorIva =  $row[0]; 
-              }	 
-	 }
-	 ?> 
-
-    <!-- Select2 CSS (agregado) -->
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <!-- Select2 JS (agregado) -->
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
-	<table id="tbDatosMaestrosDetalle" class="table table-striped nowrap" style="width:100%">
-	<caption><hash class="hash-custom" style=" border-bottom: 5px solid#337ab7 !important">LISTA DE ARTICULOS:</hash></caption>  
-	<thead>
-	<tr>   
-		<td>ID</td> 
-		<td>ARTICULO</td>
-		<td>BODEGA</td>   
-		<td>CANTIDAD</td>  
-		<td>PRECIO</td> 
-		<td>SUBTOTAL</td> 
-		<td>DESCUENTO</td> 
-		<td>IVA</td> 
-		<td>TOTAL</td>  
-		<td>ACCIONES</td>
-	</tr> 
-	</thead>
-	<tbody>
+<?php
+   require_once "../../clases/Conexion.php";
+   $c= new conectar();
+   $conexion=$c->conexion(); 
+   $idmovimiento = $_GET['idmovimiento'];
+   $estado = $_GET['estado'];
+   $guardado = $_GET['guardado'];
+   // Obtener el subtipo de movimiento para exponerlo a JS (si no viene de la vista padre)
+   if (!isset($subtipoMovimiento) || !$subtipoMovimiento) {
+	   $subtipoMovimiento = '';
+	   if (!empty($idmovimiento)) {
+		   $idmovimiento_sql = trim($idmovimiento, "'");
+		   $sqlSubtipo = "SELECT sub.sub_tipo FROM movimientos mov INNER JOIN sub_tipo_movimiento sub ON mov.id_sub_tipo_movimiento = sub.id_sub_tipo_movimiento WHERE mov.id_movimiento = '$idmovimiento_sql' LIMIT 1";
+		   $resultSubtipo = mysqli_query($conexion, $sqlSubtipo);
+		   if ($resultSubtipo && $row = mysqli_fetch_row($resultSubtipo)) {
+			   $subtipoMovimiento = $row[0];
+		   }
+	   }
+   }
+?>
+<?php
+// Obtener el valor del IVA
+$valorIva = 0;
+$sqlIva = "SELECT monto FROM iva LIMIT 1";
+$resultIva = mysqli_query($conexion, $sqlIva);
+if ($resultIva && $rowIva = mysqli_fetch_row($resultIva)) {
+	$valorIva = $rowIva[0];
+}
+?>
+<?php
+// Consulta para obtener los artículos del movimiento
+if ($guardado=="'0'") {
+	$sqlArticulos = "SELECT   det.id_movimientos_detalle_tmp id_movimiento_detalle,
+				  art.id_producto,
+				  art.nombre,
+				  det.lote,
+				  ROUND(det.precio,2) precio,
+				  ROUND(det.cantidad,2) cantidad,
+				  ROUND(det.subtotal,2) subtotal,
+				  ROUND(det.total,2) total,
+				  bod.nombreBodega,
+				  det.id_bodega_lugar,
+				  ROUND(det.decuento,2) decuento,
+				  ROUND(det.iva,2) iva
+		 from movimientos_detalle_tmp as det
+		 inner join articulos art on det.id_articulo= art.id_producto
+		 inner join bodegas bod on  det.id_bodega_lugar= bod.id_bodega
+		 where id_movimiento =  $idmovimiento ";
+} else {
+	$sqlArticulos = "SELECT   det.id_movimiento_detalle id_movimiento_detalle,
+			   art.id_producto,
+			   art.nombre,
+			   det.lote,
+			   ROUND(det.precio,2) precio,
+			   ROUND(det.cantidad,2) cantidad,
+			   ROUND(det.subtotal,2) subtotal,
+			   ROUND(det.total,2) total,
+			   bod.nombreBodega,
+			   det.id_bodega_lugar,
+			   ROUND(det.decuento,2) decuento,
+			   ROUND(det.iva,2) iva
+	  from movimientos_detalle as det
+	  inner join articulos art on det.id_articulo= art.id_producto
+	  inner join bodegas bod on  det.id_bodega_lugar= bod.id_bodega
+	  where id_movimiento =  $idmovimiento ";
+}
+ $resultListaArticulo = mysqli_query($conexion, $sqlArticulos);
+?>
+<table id="tbDatosMaestrosDetalle" class="table table-striped nowrap" style="width:100%">
+<caption><hash class="hash-custom" style=" border-bottom: 5px solid#337ab7 !important">LISTA DE ARTICULOS:</hash></caption>  
+<thead>
+<tr>
+	<th>ID</th>
+	<th>ARTICULO</th>
+	<th>BODEGA</th>
+	<th>CANTIDAD</th>
+	<?php if (strtoupper($subtipoMovimiento) === 'COMPRAS') : ?>
+	<th>PRECIO</th>
+	<th>SUBTOTAL</th>
+	<th>DESCUENTO</th>
+	<th>IVA</th>
+	<th>TOTAL</th>
+	<?php endif; ?>
+	<th>ACCIONES</th>
+</tr>
+</thead>
+<tbody>
 	<?php while($ver=mysqli_fetch_row($resultListaArticulo)): ?> 
 	<tr> 
 		<td><?php echo $ver[1]; ?></td>
 		<td><?php echo $ver[2]; ?></td>
 		<td><?php echo $ver[8]; ?></td>  
 		<td><?php echo $ver[5]; ?></td> 
+		<?php if (strtoupper($subtipoMovimiento) === 'COMPRAS') : ?>
 		<td><?php echo $ver[4]; ?></td>   
 		<td><?php echo $ver[6]; ?></td> 
 		<td><?php echo $ver[10]; ?></td>   
 		<td><?php echo $ver[11]; ?></td>     
 		<td style = "color: #1a36e0;font-size: small;"><?php echo $ver[7]; ?></td>   
+		<?php endif; ?>
 		<td>  
 		  <?php if($estado=="'1'" && $guardado=="'0'" ){?>
 			  <div class="btn-group">  
-				   <button style="background: black !important;" title="MODIFICAR IVA/DESCUENTO" class="btn btn-warning" onclick="buscarDetalleResumeItems('<?php echo $ver[0] ?>',<?php echo $idmovimiento ?>,'<?php echo $ver[2] ?>')" data-toggle="modal" data-target="#modificardescuentoproducto"><i class="glyphicon glyphicon-menu-hamburger" ></i></button> 
-				   <button title="Editar datos articulo" class="btn btn-warning" onclick="agregaDatosDetalleArticulo('<?php echo $ver[0] ?>','<?php echo $ver[9] ?>','<?php echo $ver[4] ?>','<?php echo $ver[5] ?>','<?php echo $ver[3] ?>','<?php echo $ver[2] ?>')" data-toggle="modal" data-target="#abremodalUpdateProduct"><i class="glyphicon glyphicon-edit" ></i></button>
-                   <button title="Eliminar articulo" class="btn btn-danger"  onclick="eliminaMovimientoArticulo('<?php echo $ver[0] ?>')"><i class="glyphicon glyphicon-remove"></i></button>
+					<?php if (strtoupper($subtipoMovimiento) === 'COMPRAS') : ?>
+					<button style="background: black !important;" title="MODIFICAR IVA/DESCUENTO" class="btn btn-warning" onclick="buscarDetalleResumeItems('<?php echo $ver[0] ?>',<?php echo $idmovimiento ?>,'<?php echo $ver[2] ?>')" data-toggle="modal" data-target="#modificardescuentoproducto"><i class="glyphicon glyphicon-menu-hamburger" ></i></button> 
+					<?php endif; ?>
+					<button title="Editar datos articulo" class="btn btn-warning" onclick="agregaDatosDetalleArticulo('<?php echo $ver[0] ?>','<?php echo $ver[9] ?>','<?php echo $ver[4] ?>','<?php echo $ver[5] ?>','<?php echo $ver[3] ?>','<?php echo $ver[2] ?>')" data-toggle="modal" data-target="#abremodalUpdateProduct"><i class="glyphicon glyphicon-edit" ></i></button>
+					<button title="Eliminar articulo" class="btn btn-danger"  onclick="eliminaMovimientoArticulo('<?php echo $ver[0] ?>')"><i class="glyphicon glyphicon-remove"></i></button>
 				</div>  
 		  <?php }?>     
 		</td> 
 	</tr>
-<?php endwhile; ?>
-</tbody>
-</table> 
+	<?php endwhile; ?>
+	</tbody>
+	</table>
 <!-- MODAL EDITAR MOVIMIENTO --> 
 <div class="modal fade" id="abremodalUpdateProduct" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
 			<div class="modal-dialog modal-xl" role="document">
@@ -138,12 +143,18 @@
 						   <label class="label-custom">CANTIDAD:</label>
 					  	   <input type="number" class="form-control input-sm" id="cantidadU" name="cantidadU">
 				  	  </div> 
-					  <div class="col-sm-6">
-					    	<label class="label-custom">PRECIO:</label>
-					   	    <input type="number" class="form-control input-sm" id="precioU" name="precioU">
-						     <label class="label-custom">LOTE:</label>
-						     <input type="text" class="form-control input-sm" id="loteU" name="loteU">  
-					   </div> 
+					<div class="col-sm-6" id="colPrecioLote">
+						<!-- El input de precioU siempre existe, pero solo es visible para COMPRAS -->
+						<?php if (in_array(strtoupper($subtipoMovimiento), ['COMPRAS'])) : ?>
+							<label class="label-custom">PRECIO:</label>
+							<input type="number" class="form-control input-sm" id="precioU" name="precioU">
+							<label class="label-custom">LOTE:</label>
+							<input type="text" class="form-control input-sm" id="loteU" name="loteU">  
+						<?php else: ?>
+							<input type="hidden" id="precioU" name="precioU">
+							<input type="hidden" id="loteU" name="loteU">
+						<?php endif; ?>
+					</div>
 					 </div> 
 					 <p></p>  
 					</form>
@@ -175,12 +186,14 @@
 					   <input type="text" hidden="" id="idmovimientoDetalleItem" name="idmovimientoDetalleItem">
 					   <input type="text" hidden="" id="idmovimiento" name="idmovimiento">
 					   <div class="row"> 
-					    <div class="col-sm-12">
-						   <label class="label-custom">% IVA:</label>&nbsp;<input type="checkbox" id="ckaplicarivaItem" name="ckaplicarivaItem">
-						   <input type="number" disabled class="form-control input-sm" id="porceIVAItem" name="porceIVAItem">
-						   <label class="label-custom">% DESCUENTO:</label>&nbsp;<input type="checkbox" id="ckaplicardescuentoItem" name="ckaplicardescuentoItem">
-						   <input type="number"  class="form-control input-sm" id="porceDESCUENTOItem" name="porceDESCUENTOItem">  
-					    </div> 
+						<div class="col-sm-12">
+							<?php if (strtoupper($subtipoMovimiento) === 'COMPRAS') : ?>
+							<label class="label-custom">% IVA:</label>&nbsp;<input type="checkbox" id="ckaplicarivaItem" name="ckaplicarivaItem">
+							<input type="number" disabled class="form-control input-sm" id="porceIVAItem" name="porceIVAItem">
+							<label class="label-custom">% DESCUENTO:</label>&nbsp;<input type="checkbox" id="ckaplicardescuentoItem" name="ckaplicardescuentoItem">
+							<input type="number"  class="form-control input-sm" id="porceDESCUENTOItem" name="porceDESCUENTOItem">  
+							<?php endif; ?>
+						</div>
 					  </div> 
 					<p></p>  
 					</form>
@@ -207,22 +220,120 @@ $container-max-widths: (
 ); 
 </style> 
 <script type="text/javascript">
-		$("#tbDatosMaestrosDetalle").DataTable({
-                 responsive: true,
-           });
+$(document).ready(function(){
+	// Si ya existe una instancia previa, destrúyela antes de inicializar
+	if ($.fn.DataTable.isDataTable('#tbDatosMaestrosDetalle')) {
+		$('#tbDatosMaestrosDetalle').DataTable().destroy();
+	}
+	$("#tbDatosMaestrosDetalle").DataTable({
+		responsive: true,
+	});
+	// INICIO CAMBIO: Select2 para el combo de bodegas en el modal editar producto
+	$('#almacenSelectU').select2({
+		width: '100%',
+		placeholder: 'Buscar bodega...',
+		allowClear: true
+	});
+	// FIN CAMBIO
 
-function agregaDatosDetalleArticulo(idmovimientoDetalle,idubicacion, precio,cantidad, lote,producto){	
-	$('#idmovimientoDetalle').val(idmovimientoDetalle); 
+	$('#btnActualizarDetalleMovimiento').click(function(){   
+		var vidmovimientoHeader= <?php echo $idmovimiento ?>;
+		var vestado= <?php echo $estado ?>;
+		var vguardado= <?php echo $guardado ?>;
+		var vidmovimiento = $("#idmovimientoDetalle").val();
+		var vidalmacen    = $("#almacenSelectU").val();
+		var vcantidad     = $("#cantidadU").val();
+		var subtipo = (window.subtipoMovimientoActivo || '').toUpperCase();
+		var vprecio = $("#precioU").val(); // Siempre tomar del campo oculto
+		var vlote = '';
+		if(subtipo === 'COMPRAS') {
+			vlote = $("#loteU").val();
+		} else {
+			vlote = '';
+		}
+		if (vidalmacen == "" || vidalmacen == "A") 
+		{
+			Swal.fire({
+				title: "Seleccione la bodega agregar",
+				icon: "error",
+				text : "Favor intentar nuevamente.",
+				draggable: true,
+			}); 
+			return false;
+		}
+		else if (vcantidad == "" || vcantidad == "0")
+		{
+			Swal.fire({
+				title: "Ingresa la cantidad, esta debe de ser mayor a cero.",
+				icon: "error",
+				text : "Favor intentar nuevamente.",
+				draggable: true,
+			}); 
+			return false;
+		}
+		// Validar precio para todos los subtipos
+		if (vprecio === '' || vprecio == 0) {
+			Swal.fire({
+				title: "Ingresa el precio, este debe de ser mayor a cero.",
+				icon: "error",
+				text : "Favor intentar nuevamente.",
+				draggable: true,
+			});
+			return false;
+		}
+		enviarEdicion();
+		function enviarEdicion() {
+			var inputValue = "id_movimiento_detalle="+vidmovimiento+"&id_bodega_lugar="+vidalmacen+"&precio="+vprecio+"&cantidad="+vcantidad+"&lote="+vlote;
+			// El precio siempre se envía
+			//alert(inputValue);
+			$.ajax({
+				type:"POST",
+				data:inputValue, 
+				url: "../procesos/movimientos/actualizarMovimientoDetalle.php",
+				success:function(r){ 
+					///alert(r);
+					if(r==1){
+						$("#idmovimientoDetalle").val('');
+						$("#almacenSelectU").val('').trigger('change');
+						$("#cantidadU").val('');
+						$("#precioU").val('');
+						$("#loteU").val('');
+						detalleMovimientoArticulo(vidmovimientoHeader,vestado,vguardado);
+						buscarDetalleResume(vidmovimientoHeader);
+					}else{ 
+						if (r == 2)
+						{
+							Swal.fire({
+								title: "STOCK INSUFICIENTE",
+								icon: "warning",
+								text : "No tiene suficiente stok en el articulo para realizar salidas.",
+								draggable: true,
+							});  
+						}
+						else{
+							Swal.fire({
+								title: "Error al actualizar el articulo.",
+								icon: "error",
+								text : "Favor intentar nuevamente.",
+								draggable: true,
+							});  
+						}
+					}
+				}
+			});
+		}
+	});
+});
+function agregaDatosDetalleArticulo(idmovimientoDetalle, idubicacion, precio, cantidad, lote, producto) {
+	$('#idmovimientoDetalle').val(idmovimientoDetalle);
 	$('#almacenSelectU').val(idubicacion).trigger('change'); // actualiza select2 si está activo
 	$('#cantidadU').val(cantidad);
+	// Siempre cargar precio y lote, aunque luego se oculten o deshabiliten según subtipo
 	$('#precioU').val(precio);
 	$('#loteU').val(lote);
-    $('#nombreProducto').val(producto);
-	
-}		   
-</script>
-<script type="text/javascript">
-		$(document).ready(function(){ 
+	$('#nombreProducto').val(producto);
+}
+	   $(document).ready(function(){ 
             // INICIO CAMBIO: Select2 para el combo de bodegas en el modal editar producto
             $('#almacenSelectU').select2({
                 width: '100%',
@@ -238,10 +349,15 @@ function agregaDatosDetalleArticulo(idmovimientoDetalle,idubicacion, precio,cant
 			   var vguardado= <?php echo $guardado ?>;
 
 			   var vidmovimiento = $("#idmovimientoDetalle").val();
-               var vidalmacen    = $("#almacenSelectU").val();
+			   var vidalmacen    = $("#almacenSelectU").val();
 			   var vcantidad     = $("#cantidadU").val();
 			   var vprecio       = $("#precioU").val();
 			   var vlote         = $("#loteU").val(); 
+
+			   // Aplicar ocultamiento de columnas/campos según subtipo activo
+			   if (typeof window.aplicarOcultamientoPorSubtipo === 'function') {
+				   window.aplicarOcultamientoPorSubtipo();
+			   }
 			  
 			   if (vidalmacen == "" || vidalmacen == "A") 
 			   {
@@ -274,6 +390,7 @@ function agregaDatosDetalleArticulo(idmovimientoDetalle,idubicacion, precio,cant
 						return false;
 			   } 
 				const inputValue= "id_movimiento_detalle="+vidmovimiento+"&id_bodega_lugar="+vidalmacen+"&precio="+vprecio+"&cantidad="+vcantidad+"&lote="+vlote;				
+				///alert(inputValue);
 				$.ajax({
 					type:"POST",
 					data:inputValue, 
@@ -299,7 +416,7 @@ function agregaDatosDetalleArticulo(idmovimientoDetalle,idubicacion, precio,cant
 							}
 							else{
 								 Swal.fire({
-                                 title: "Error al agregar el articulo.",
+                                 title: "Error al actualizar el articulo.",
                                  icon: "error",
 								 text : "Favor intentar nuevamente.",
                                  draggable: true,

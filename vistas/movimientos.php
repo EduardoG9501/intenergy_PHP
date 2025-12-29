@@ -75,31 +75,35 @@ if (!$acceso) {
 							 <?php endwhile; ?>
 						    </select>  
 							<label>LUGAR</label>
-						    <select  style="color: #b95c00;" class="form-control input-sm select2" id="bodegaSelect" name="bodegaSelect">
-							  <option value="A">Selecciona la bodega</option>
-							    <?php 
-								        $sql="SELECT id_bodega,nombreBodega
-		                                from bodegas
-										where estado = 1";
-		                                $result=mysqli_query($conexion,$sql);
-								        while($ver=mysqli_fetch_row($result)): ?>
-								       <option value="<?php echo $ver[0] ?>"><?php echo $ver[1]; ?></option>
-							    <?php endwhile; ?>
-						    </select> 
-							<label>FORMA PAGO</label>
-						    <select class="form-control input-sm select2" id="formapagoSelect" name="formapagoSelect">
-							  <option value="0">NO APLICA</option>
-							    <?php 
-								        $sql="SELECT id_forma_pago,forma_pago
-		                                from forma_pago
-										where estado = 1";
-		                                $result=mysqli_query($conexion,$sql);
-								        while($ver=mysqli_fetch_row($result)): ?>
-								       <option value="<?php echo $ver[0] ?>"><?php echo $ver[1]; ?></option>
-							    <?php endwhile; ?>
-						    </select>   
-						  <label>NO.DOCUMENTO/FACTURA</label>
-						  <input type="text" placeholder="Nùmero de documento" class="form-control input-sm" id="nodocumento" name="nodocumento"> 	   	
+							<select style="color: #b95c00;" class="form-control input-sm select2" id="bodegaSelect" name="bodegaSelect">
+								<?php 
+									$sql = "SELECT id_bodega, nombreBodega FROM bodegas WHERE estado = 1";
+									$result = mysqli_query($conexion, $sql);
+									while ($ver = mysqli_fetch_row($result)):
+								?>
+									<option value="<?php echo $ver[0] ?>"><?php echo $ver[1]; ?></option>
+								<?php endwhile; ?>
+							</select>
+							<div id="extraCamposNuevoMovimiento">
+								<label>FORMA PAGO</label>
+								<select class="form-control input-sm select2" id="formapagoSelect" name="formapagoSelect">
+									<option value="0">NO APLICA</option>
+										<?php 
+												$sql="SELECT id_forma_pago,forma_pago
+												from forma_pago
+												where estado = 1";
+												$result=mysqli_query($conexion,$sql);
+												while($ver=mysqli_fetch_row($result)): ?>
+											 <option value="<?php echo $ver[0] ?>"><?php echo $ver[1]; ?></option>
+										<?php endwhile; ?>
+								</select>   
+								<label>NO.DOCUMENTO/FACTURA</label>
+								<input type="text" placeholder="Nùmero de documento" class="form-control input-sm" id="nodocumento" name="nodocumento"> 
+								<label>FECHA PAGO</label>
+								<input value="0001-01-01" type="date" class="form-control input-sm" id="fechapago" name="fechapago"> 
+								<label>DIA PAGO</label>
+								<input type="number" class="form-control input-sm" id="diapago" name="diapago" readonly>
+							</div>
 						</div>
 						 <div class="col-sm-6">   
 						  <label>PROVEEDOR</label>
@@ -116,12 +120,72 @@ if (!$acceso) {
 						    </select>  
 						<label>FECHA DOCUMENTO</label>
 						<input value="0001-01-01" type="date" class="form-control input-sm" id="fechadocumento" name="fechadocumento"> 
-						<label>FECHA PAGO</label>
-						<input value="0001-01-01" type="date" class="form-control input-sm" id="fechapago" name="fechapago"> 
-						<label>DIA PAGO</label>
-						 <input type="number" class="form-control input-sm" id="diapago" name="diapago" readonly>
 						<label>OBSERVACION</label>
-						 <textarea name="observacion" id="observacion" rows="5" cols="30"></textarea>
+						<textarea name="observacion" id="observacion" rows="5" cols="30"></textarea>
+						<script type="text/javascript">
+						// Inyectar la bodega activa de la sesión PHP a JS (igual que en ordenes_trabajo.php)
+						var bodegaActivaSesion = null;
+						<?php if (isset($_SESSION['bodega_seleccionada'])): ?>
+						    bodegaActivaSesion = '<?php echo $_SESSION['bodega_seleccionada']; ?>';
+						<?php endif; ?>
+
+						// Seleccionar la bodega activa de la sesión al abrir el modal
+						function seleccionarBodegaActiva() { 
+							var $bodega = $('#bodegaSelect');
+							if (bodegaActivaSesion && $bodega.find('option[value="'+bodegaActivaSesion+'"]').length > 0) {
+								$bodega.val(bodegaActivaSesion).trigger('change');
+							} else {
+								$bodega.val($bodega.find('option').first().val()).trigger('change');
+							}
+						}
+						$(document).ready(function(){
+							function simplificarFormularioNuevoMovimiento() {
+								var tipo = $('#tipoSelect option:selected').text().trim().toUpperCase();
+								var subtipo = $('#subtipoSelect option:selected').text().trim().toUpperCase();
+								if(tipo === 'ENTRADA' && subtipo === 'CARGOS') {
+									$('#extraCamposNuevoMovimiento').hide();
+								} else {
+									$('#extraCamposNuevoMovimiento').show();
+								}
+							}
+							$('#tipoSelect, #subtipoSelect').on('change', simplificarFormularioNuevoMovimiento);
+							// Ejecutar al abrir modal: seleccionar bodega activa y valores por defecto
+							$('#abremodalUpdateAgregarMovimeinto').on('show.bs.modal', function () {
+								seleccionarBodegaActiva();
+								// Seleccionar por defecto ENTRADA y CARGOS
+								var $tipo = $('#tipoSelect');
+								var $subtipo = $('#subtipoSelect');
+								$tipo.find('option').each(function(){
+									if($(this).text().trim().toUpperCase() === 'ENTRADA') {
+										$tipo.val($(this).val()).trigger('change');
+									}
+								});
+								var intentos = 0;
+								function seleccionarCargosSiExiste() {
+									var $subtipo = $('#subtipoSelect');
+									var encontrado = false;
+									$subtipo.find('option').each(function(){
+										if($(this).text().trim().toUpperCase() === 'CARGOS') {
+											$subtipo.val($(this).val()).trigger('change');
+											encontrado = true;
+										}
+									});
+									if (!encontrado && intentos < 10) {
+										intentos++;
+										setTimeout(seleccionarCargosSiExiste, 100);
+									} else {
+										simplificarFormularioNuevoMovimiento();
+									}
+								}
+								seleccionarCargosSiExiste();
+							});
+
+							// Llamar seleccionarBodegaActiva() al hacer click en el botón NUEVO MOVIMIENTO si existe
+							$(document).on('click', '[data-target="#abremodalUpdateAgregarMovimeinto"]', function() {
+								setTimeout(function(){ seleccionarBodegaActiva(); }, 100);
+							});
+						});
+						</script>
 						</div>
 					</div> 
 					<p></p>  
@@ -174,20 +238,26 @@ if (!$acceso) {
 								       <option value="<?php echo $ver[0] ?>"><?php echo $ver[1]; ?></option>
 							    <?php endwhile; ?>
 						    </select> 
-							<label>FORMA PAGO</label>
-						    <select class="form-control input-sm select2" id="formapagoSelectU" name="formapagoSelectU">
-							 <option value="0">NO APLICA</option>
-							    <?php 
-								        $sql="SELECT id_forma_pago,forma_pago
-		                                from forma_pago
-										where estado = 1";
-		                                $result=mysqli_query($conexion,$sql);
-								        while($ver=mysqli_fetch_row($result)): ?>
-								       <option value="<?php echo $ver[0] ?>"><?php echo $ver[1]; ?></option>
-							    <?php endwhile; ?>
-						    </select>   
-						  <label>NO.DOCUMENTO/FACTURA</label>
-						  <input type="text" placeholder="Nùmero de documento" class="form-control input-sm" id="nodocumentoU" name="nodocumentoU"> 	   	
+							<div id="extraCamposEditarMovimiento">
+								<label>FORMA PAGO</label>
+								<select class="form-control input-sm select2" id="formapagoSelectU" name="formapagoSelectU">
+								 <option value="0">NO APLICA</option>
+										<?php 
+												$sql="SELECT id_forma_pago,forma_pago
+												from forma_pago
+												where estado = 1";
+												$result=mysqli_query($conexion,$sql);
+												while($ver=mysqli_fetch_row($result)): ?>
+											 <option value="<?php echo $ver[0] ?>"><?php echo $ver[1]; ?></option>
+										<?php endwhile; ?>
+								</select>   
+								<label>NO.DOCUMENTO/FACTURA</label>
+								<input type="text" placeholder="Nùmero de documento" class="form-control input-sm" id="nodocumentoU" name="nodocumentoU"> 
+								<label>FECHA PAGO</label>
+								<input type="date" class="form-control input-sm" id="fechapagoU" name="fechapagoU"> 
+								<label>DIA PAGO</label>
+								<input type="number" class="form-control input-sm" id="diapagoU" name="diapagoU" readonly>
+							</div>
 						</div>
 						 <div class="col-sm-6">   
 						  <label>PROVEEDOR</label>
@@ -204,12 +274,26 @@ if (!$acceso) {
 						    </select>  
 						<label>FECHA DOCUMENTO</label>
 						<input type="date" class="form-control input-sm" id="fechadocumentoU" name="fechadocumentoU"> 
-						<label>FECHA PAGO</label>
-						<input type="date" class="form-control input-sm" id="fechapagoU" name="fechapagoU"> 
-						<label>DIA PAGO</label>
-					    <input type="number" class="form-control input-sm" id="diapagoU" name="diapagoU" readonly>
 						<label>OBSERVACION</label>
-						 <textarea name="observacionU" id="observacionU" rows="5" cols="30"></textarea>
+						<textarea name="observacionU" id="observacionU" rows="5" cols="30"></textarea>
+						<script type="text/javascript">
+						$(document).ready(function(){
+							function simplificarFormularioEditarMovimiento() {
+								var tipo = $('#tipoSelectU option:selected').text().trim().toUpperCase();
+								var subtipo = $('#subtipoSelectU option:selected').text().trim().toUpperCase();
+								if(tipo === 'ENTRADA' && subtipo === 'CARGOS') {
+									$('#extraCamposEditarMovimiento').hide();
+								} else {
+									$('#extraCamposEditarMovimiento').show();
+								}
+							}
+							$('#tipoSelectU, #subtipoSelectU').on('change', simplificarFormularioEditarMovimiento);
+							// Ejecutar al abrir modal por si ya está seleccionado
+							$('#abremodalUpdateMovimiento').on('show.bs.modal', function () {
+								setTimeout(simplificarFormularioEditarMovimiento, 200);
+							});
+						});
+						</script>
 						</div>
 					</div> 
 					<p></p>  
@@ -456,33 +540,33 @@ function setDateValue ()
   document.getElementById('fechapago').value = currentDate;
 }
 function agregaDatosMovimiento(idmovimiento){
-	 window.editandoMovimiento = true; // Desactiva validación temporalmente
-			$.ajax({
-				type:"POST",
-				data:"idmovimiento=" + idmovimiento,
-				url:"../procesos/movimientos/obtenDatosMovimiento.php",
-				success:function(r){   
-					dato=jQuery.parseJSON(r); 
-					$('#idmovimiento').val(dato['id_movimiento']);
-					$('#tipoSelectU').val(dato['id_tipo_movimiento']);
-					$('#subtipoSelectU').val(dato['id_sub_tipo_movimiento']);
-					$('#bodegaSelectU').val(dato['id_bodega']);
-					$('#formapagoSelectU').val(dato['id_forma_pago']); 
-					$('#proveedorSelectU').val(dato['id_proveedor']);  
-				    // Si usas select2 en los select del detalle, refresca el valor visual:
-					$('#tipoSelectU, #subtipoSelectU, #bodegaSelectU, #formapagoSelectU, #proveedorSelectU').trigger('change');
-					$('#fechadocumentoU').val(dato['fechaDocumento']); 
-					$('#diapagoU').val(dato['cant_dia_pago']); 
-					$('#nodocumentoU').val(dato['no_documento']);   
-					$('#fechapagoU').val(dato['fechaPago']); 
-					$('#observacionU').val(dato['observacion']);  
-					///cargarSubMovimiento(dato['id_tipo_movimiento'],dato['id_sub_tipo_movimiento']); 
-					setTimeout(function() {
-                       window.editandoMovimiento = false; // Reactiva validación después de llenar
-                    }, 500); // espera a que termine el llenado y render, puedes ajustar el tiempo
-				}
-			});
+	window.editandoMovimiento = true; // Desactiva validación temporalmente
+	$.ajax({
+		type:"POST",
+		data:"idmovimiento=" + idmovimiento,
+		url:"../procesos/movimientos/obtenDatosMovimiento.php",
+		success:function(r){   
+			var dato = jQuery.parseJSON(r); 
+			$('#idmovimiento').val(dato['id_movimiento']);
+			$('#tipoSelectU').val(dato['id_tipo_movimiento']);
+			// Llenar subtipos por AJAX y seleccionar el correcto
+			cargarSubMovimiento(dato['id_tipo_movimiento'], dato['id_sub_tipo_movimiento']);
+			$('#bodegaSelectU').val(dato['id_bodega']);
+			$('#formapagoSelectU').val(dato['id_forma_pago']); 
+			$('#proveedorSelectU').val(dato['id_proveedor']);  
+			// Refrescar select2 para los selects que no dependen de AJAX
+			$('#tipoSelectU, #bodegaSelectU, #formapagoSelectU, #proveedorSelectU').trigger('change');
+			$('#fechadocumentoU').val(dato['fechaDocumento']); 
+			$('#diapagoU').val(dato['cant_dia_pago']); 
+			$('#nodocumentoU').val(dato['no_documento']);   
+			$('#fechapagoU').val(dato['fechaPago']); 
+			$('#observacionU').val(dato['observacion']);  
+			setTimeout(function() {
+				window.editandoMovimiento = false; // Reactiva validación después de llenar
+			}, 500); // espera a que termine el llenado y render, puedes ajustar el tiempo
 		}
+	});
+}
 function agregaDatosMovimientoDetalle(idmovimiento){
     $.ajax({
         type:"POST",
@@ -519,45 +603,40 @@ function regresar(idmovimiento){
 		   $('#containarDatosMaestros').show()
 		}
 function cargarSubMovimiento(idTipoMovimiento, idsubtipo){   
-			 $("#subtipoSelectU").empty();
-	          $.ajax({
-				type:"POST",
-				data:"filtro=" + idTipoMovimiento,
-				url:"../procesos/movimientos/filtrarSubTipoMovimiento.php",
-				success:function(r){    
-					dato=jQuery.parseJSON(r);  
-					const obj = JSON.parse(dato);
-					if (obj != null)
-			     	{
-                        obj.forEach((option) => {
-                        const optionElement = document.createElement("option"); 
-                        const selectElement = document.getElementById("subtipoSelectU");
- 
-                         if (typeof option === "string") {
-                             optionElement.value = option.id_sub_tipo_movimiento;
-                             optionElement.text = option.sub_tipo;
-                        } else {
-                              optionElement.value = option.id_sub_tipo_movimiento;
-                              optionElement.text = option.sub_tipo;
-                         } 
-                        selectElement.appendChild(optionElement);
-                    }); 
-					$('#subtipoSelectU').val(idsubtipo);
-					// INICIALIZAR SELECT2 AL RECARGAR SUBTIPO U
-					$('#subtipoSelectU').select2({
-						width: '100%',
-						dropdownParent: $('#abremodalUpdateMovimiento')
-					});
-				  }
-				  else{
-					Swal.fire({
-                               title: "No se encontraron resultados con el idTipoMovimiento: " + idTipoMovimiento,
-                                icon: "warning",
-                               draggable: true,
-                             }); 
-				  } 
-				} 
-			});
+	var $subtipo = $("#subtipoSelectU");
+	$subtipo.empty(); // Limpiar antes de llenar para evitar duplicados
+	$.ajax({
+		type:"POST",
+		data:"filtro=" + idTipoMovimiento,
+		url:"../procesos/movimientos/filtrarSubTipoMovimiento.php",
+		success:function(r){    
+			var dato = jQuery.parseJSON(r);  
+			const obj = JSON.parse(dato);
+			if (obj != null) {
+				obj.forEach((option) => {
+					const optionElement = document.createElement("option"); 
+					optionElement.value = option.id_sub_tipo_movimiento;
+					optionElement.text = option.sub_tipo;
+					$subtipo.append(optionElement);
+				}); 
+				// Seleccionar el subtipo correcto y refrescar select2
+				setTimeout(function() {
+					$subtipo.val(idsubtipo).trigger('change');
+				}, 50);
+				// INICIALIZAR SELECT2 AL RECARGAR SUBTIPO U
+				$subtipo.select2({
+					width: '100%',
+					dropdownParent: $('#abremodalUpdateMovimiento')
+				});
+			} else {
+				Swal.fire({
+					title: "No se encontraron resultados con el idTipoMovimiento: " + idTipoMovimiento,
+					icon: "warning",
+					draggable: true,
+				}); 
+			} 
+		} 
+	});
 }
 function eliminaMovimiento(idmovimiento){ 
 swal.fire({
@@ -873,6 +952,15 @@ swal.fire({
 						width: '100%',
 						dropdownParent: $('#abremodalUpdateAgregarMovimeinto')
 					});
+					// Seleccionar automáticamente CARGOS si existe
+					var $subtipo = $('#subtipoSelect');
+					var encontrado = false;
+					$subtipo.find('option').each(function(){
+						if($(this).text().trim().toUpperCase() === 'CARGOS') {
+							$subtipo.val($(this).val()).trigger('change');
+							encontrado = true;
+						}
+					});
 				  }
 				  else{
 					Swal.fire({
@@ -984,51 +1072,41 @@ swal.fire({
 	<script type="text/javascript">
 		$(document).ready(function(){ 
 			$('#tipoSelectU').on('change', function() {
-			
-			var idTipoMovimiento = $(this).find(":selected").val()	  
-			///$("#formapagoSelectU").val('0'); 
-            $("#nodocumentoU").val('');
-			$("#diapagoU").val('0');  
-			$("#fechapagoU").val('0001-01-01');    
-		    $("#subtipoSelectU").empty();
-
-	          $.ajax({
-				type:"POST",
-				data:"filtro=" + idTipoMovimiento,
-				url:"../procesos/movimientos/filtrarSubTipoMovimiento.php",
-				success:function(r){    
-					dato=jQuery.parseJSON(r);  
-					const obj = JSON.parse(dato);
-					if (obj != null)
-			     	{
-                        obj.forEach((option) => {
-                        const optionElement = document.createElement("option"); 
-                        const selectElement = document.getElementById("subtipoSelectU");
- 
-                         if (typeof option === "string") {
-                             optionElement.value = option.id_sub_tipo_movimiento;
-                             optionElement.text = option.sub_tipo;
-                        } else {
-                              optionElement.value = option.id_sub_tipo_movimiento;
-                              optionElement.text = option.sub_tipo;
-                         } 
-                        selectElement.appendChild(optionElement);
-                    }); 
-					// INICIALIZAR SELECT2 AL RECARGAR SUBTIPO U
-					$('#subtipoSelectU').select2({
-						width: '100%',
-						dropdownParent: $('#abremodalUpdateMovimiento')
-					});
-				  }
-				  else{
-					Swal.fire({
-                               title: "No se encontraron resultados con el idTipoMovimiento: " + idTipoMovimiento,
-                                icon: "warning",
-                               draggable: true,
-                             }); 
-				  } 
-				} 
-			});
+				// Evitar recarga de subtipos si estamos editando
+				if (window.editandoMovimiento) return;
+				var idTipoMovimiento = $(this).find(":selected").val();
+				$("#nodocumentoU").val('');
+				$("#diapagoU").val('0');  
+				$("#fechapagoU").val('0001-01-01');    
+				$("#subtipoSelectU").empty();
+				$.ajax({
+					type:"POST",
+					data:"filtro=" + idTipoMovimiento,
+					url:"../procesos/movimientos/filtrarSubTipoMovimiento.php",
+					success:function(r){    
+						var dato = jQuery.parseJSON(r);  
+						const obj = JSON.parse(dato);
+						if (obj != null) {
+							obj.forEach((option) => {
+								const optionElement = document.createElement("option"); 
+								optionElement.value = option.id_sub_tipo_movimiento;
+								optionElement.text = option.sub_tipo;
+								document.getElementById("subtipoSelectU").appendChild(optionElement);
+							}); 
+							// INICIALIZAR SELECT2 AL RECARGAR SUBTIPO U
+							$('#subtipoSelectU').select2({
+								width: '100%',
+								dropdownParent: $('#abremodalUpdateMovimiento')
+							});
+						} else {
+							Swal.fire({
+								title: "No se encontraron resultados con el idTipoMovimiento: " + idTipoMovimiento,
+								icon: "warning",
+								draggable: true,
+							}); 
+						} 
+					} 
+				});
 			});
 		});
 	</script>
@@ -1165,7 +1243,18 @@ function cargarSubtipoNuevo(idTipoMovimiento) {
 
 // Llama al reset cada vez que se abre el modal de nuevo movimiento
 $('#abremodalUpdateAgregarMovimeinto').on('show.bs.modal', function () {
-    resetFormNuevoMovimiento();
+	resetFormNuevoMovimiento();
+	// Seleccionar la bodega activa de la sesión después de resetear el formulario
+	var bodegaActivaSesion = null;
+	<?php if (isset($_SESSION['bodega_seleccionada'])): ?>
+		bodegaActivaSesion = '<?php echo $_SESSION['bodega_seleccionada']; ?>';
+	<?php endif; ?>
+	setTimeout(function() {
+		var $bodega = $('#bodegaSelect');
+		if (bodegaActivaSesion && $bodega.find('option[value="'+bodegaActivaSesion+'"]').length > 0) {
+			$bodega.val(bodegaActivaSesion).trigger('change');
+		}
+	}, 200);
 });
 </script>
 <?php 

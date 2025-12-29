@@ -19,10 +19,31 @@
 	 }
 	 ?>
 
-    <!-- Select2 CSS (agregado) -->
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <!-- Select2 JS (agregado) -->
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+	<!-- Select2 CSS (agregado) -->
+	<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+	<!-- Select2 JS (agregado) -->
+	<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+	<!-- Script para ocultar columnas/campos según subtipo -->
+	<script src="../js/movimientos_ocultamiento.js"></script>
+<?php
+// Obtener el subtipo de movimiento para exponerlo a JS
+$subtipoMovimiento = '';
+$idmovimiento_sql = trim($idmovimiento, "'");
+$sqlSubtipo = "SELECT sub.sub_tipo FROM movimientos mov INNER JOIN sub_tipo_movimiento sub ON mov.id_sub_tipo_movimiento = sub.id_sub_tipo_movimiento WHERE mov.id_movimiento = '$idmovimiento_sql' LIMIT 1";
+$resultSubtipo = mysqli_query($conexion, $sqlSubtipo);
+if ($resultSubtipo && $row = mysqli_fetch_row($resultSubtipo)) {
+	$subtipoMovimiento = $row[0];
+}
+?>
+<script>
+window.subtipoMovimientoActivo = <?php echo json_encode(strtoupper($subtipoMovimiento)); ?>;
+// Aplicar ocultamiento al cargar la vista
+$(document).ready(function() {
+	if (typeof window.aplicarOcultamientoPorSubtipo === 'function') {
+		window.aplicarOcultamientoPorSubtipo();
+	}
+});
+</script>
 
     <div class="container p-3 my-5 bg-light border border-primary">
 	<button title="Regresar" class="btn btn-danger" onclick="regresar()" ><i class="glyphicon glyphicon-step-backward" ></i>Regresar</button> 
@@ -61,59 +82,79 @@
 				 <?php endwhile; ?>
 			 </select>    
             </div>
-			<div class="col-sm-3">   
-				<label style="margin-top: 5px;" class="label-custom">PRECIO</label>
-			    <input style = "color: #1a36e0;font-size: small;" type="number" class="form-control input-sm" id="precio" name="precio">  
-				<label class="label-custom">CANTIDAD</label>
-			    <input style = "color: #1a36e0;font-size: small;" type="number" class="form-control input-sm" id="cantidad" name="cantidad">
-		    </div>
-			<div class="col-sm-3">  
-			   <label class="label-custom">LOTE</label>
-			   <input type="text" class="form-control input-sm" id="lote" name="lote">
-			  <label style="margin-top: 5px;" class="label-custom">ACCIONES:</label>
-			  <div>
-				  <?php if ($estado=="'1'" && $guardado=="'0'" ){ ?>
-					<button title="Agregar articulo" id="btnAgregaMovimientoTemp" class="btn btn-info"><i class="glyphicon glyphicon-plus-sign"></i> AGREGAR</button>
-					 <?php }?>  
-                   <?php if ($guardado=="'0'" && $estado=="'1'"){?> 
-					<button title="Guardar todo" id="btnAgregaMovimientoDefinitivo" class="btn btn-success"><i class="glyphicon glyphicon-ok-sign"></i> GUARDAR</button>
-				   <?php }?>  
-			  </div> 
-			</div>
+					 <?php if (strtoupper($subtipoMovimiento) === 'COMPRAS') : ?>
+					 <div class="col-sm-3">   
+							 <label style="margin-top: 5px;" class="label-custom">PRECIO</label>
+							 <input style = "color: #1a36e0;font-size: small;" type="number" class="form-control input-sm" id="precio" name="precio">  
+							 <label class="label-custom">CANTIDAD</label>
+							 <input style = "color: #1a36e0;font-size: small;" type="number" class="form-control input-sm" id="cantidad" name="cantidad">
+					 </div>
+					 <div class="col-sm-3">  
+							<label class="label-custom">LOTE</label>
+							<input type="text" class="form-control input-sm" id="lote" name="lote">
+						 <label style="margin-top: 5px;" class="label-custom">ACCIONES:</label>
+						 <div>
+								 <?php if ($estado=="'1'" && $guardado=="'0'" ){ ?>
+									 <button title="Agregar articulo" id="btnAgregaMovimientoTemp" class="btn btn-info"><i class="glyphicon glyphicon-plus-sign"></i> AGREGAR</button>
+										<?php }?>  
+									<?php if ($guardado=="'0'" && $estado=="'1'"){?> 
+									 <button title="Guardar todo" id="btnAgregaMovimientoDefinitivo" class="btn btn-success"><i class="glyphicon glyphicon-ok-sign"></i> GUARDAR</button>
+									<?php }?>  
+						 </div> 
+					 </div>
+					 <?php else: ?>
+					 <div class="col-sm-3">   
+							 <label class="label-custom">CANTIDAD</label>
+							 <input style = "color: #1a36e0;font-size: small;" type="number" class="form-control input-sm" id="cantidad" name="cantidad">
+					 </div>
+					 <div class="col-sm-3">  
+						 <label style="margin-top: 5px;" class="label-custom">ACCIONES:</label>
+						 <div>
+								 <?php if ($estado=="'1'" && $guardado=="'0'" ){ ?>
+									 <button title="Agregar articulo" id="btnAgregaMovimientoTemp" class="btn btn-info"><i class="glyphicon glyphicon-plus-sign"></i> AGREGAR</button>
+										<?php }?>  
+									<?php if ($guardado=="'0'" && $estado=="'1'"){?> 
+									 <button title="Guardar todo" id="btnAgregaMovimientoDefinitivo" class="btn btn-success"><i class="glyphicon glyphicon-ok-sign"></i> GUARDAR</button>
+									<?php }?>  
+						 </div> 
+					 </div>
+					 <?php endif; ?>
 		</div>
 	</table> 
 	<p></p>  
 	<div id="tablaListaArticulos"></div>
 <table>
+<?php if (strtoupper($subtipoMovimiento) === 'COMPRAS') : ?>
 <label class="label-custom" style="border-bottom: 5px solid #337ab7 !important;">TOTALES:</label> 
 <div class="row" style="border: 3px solid #b0daf5;padding: 5px; margin: 0.5px; background:#f7fcff;border-radius: 11px;">
-  <div class="col-sm-4"> 
-	<label class="label-custom">DESCUENTO/IVA:</label>
-	<div>
-	   <?php if($guardado=="'0'" ){?>
-           <button style="background: black !important;" title="MODIFICAR IVA/DESCUENTO" class="btn btn-warning" onclick="cargardatosIva()" data-toggle="modal" data-target="#agregarivadescuento"><i class="glyphicon glyphicon-menu-hamburger" ></i></button> 
-	    <?php } else {  ?>
-           <button disabled style="background: black !important;" title="MODIFICAR IVA/DESCUENTO" class="btn btn-warning"  data-toggle="modal" data-target="#"><i class="glyphicon glyphicon-menu-hamburger" ></i></button> 
-	    <?php }?>  
-   </div> 
-  </div> 
-  <div class="col-sm-2">  
-	<label class="label-custom">SUB TOTAL:</label>
-	<input type="number" disabled class="form-control input-sm text-resumen" style="text-align: right !important;" id="subtotalResumen" name="subtotalResumen">  
-  </div>
-   <div class="col-sm-2">   
-	<label class="label-custom">DESCUENTO:</label>
-	<input type="number" disabled class="form-control input-sm text-resumen"  style="text-align: right !important;"  id="descuentoResumen" name="descuentoResumen"> 
-  </div>
-   <div class="col-sm-2">   
-	<label class="label-custom">IVA:</label>
-	<input type="number" disabled class="form-control input-sm text-resumen"  style="text-align: right !important;"  id="ivaResumen" name="iva"> 
-  </div>
-  <div class="col-sm-2">   
-	<label class="label-custom">TOTAL A PAGAR:</label>
-	<input type="number" disabled class="form-control input-sm text-resumen"  style="text-align: right !important;"  id="totalResumen" name="totalResumen"> 
-  </div>
+	<div class="col-sm-4"> 
+	 <label class="label-custom">DESCUENTO/IVA:</label>
+	 <div>
+			<?php if($guardado=="'0'" ){?>
+					 <button style="background: black !important;" title="MODIFICAR IVA/DESCUENTO" class="btn btn-warning" onclick="cargardatosIva()" data-toggle="modal" data-target="#agregarivadescuento"><i class="glyphicon glyphicon-menu-hamburger" ></i></button> 
+			 <?php } else {  ?>
+					 <button disabled style="background: black !important;" title="MODIFICAR IVA/DESCUENTO" class="btn btn-warning"  data-toggle="modal" data-target="#"><i class="glyphicon glyphicon-menu-hamburger" ></i></button> 
+			 <?php }?>  
+	</div> 
+	</div> 
+	<div class="col-sm-2">  
+	 <label class="label-custom">SUB TOTAL:</label>
+	 <input type="number" disabled class="form-control input-sm text-resumen" style="text-align: right !important;" id="subtotalResumen" name="subtotalResumen">  
+	</div>
+	 <div class="col-sm-2">   
+	 <label class="label-custom">DESCUENTO:</label>
+	 <input type="number" disabled class="form-control input-sm text-resumen"  style="text-align: right !important;"  id="descuentoResumen" name="descuentoResumen"> 
+	</div>
+	 <div class="col-sm-2">   
+	 <label class="label-custom">IVA:</label>
+	 <input type="number" disabled class="form-control input-sm text-resumen"  style="text-align: right !important;"  id="ivaResumen" name="iva"> 
+	</div>
+	<div class="col-sm-2">   
+	 <label class="label-custom">TOTAL A PAGAR:</label>
+	 <input type="number" disabled class="form-control input-sm text-resumen"  style="text-align: right !important;"  id="totalResumen" name="totalResumen"> 
+	</div>
 </div>
+<?php endif; ?>
 </table>
 <footer>
     <hr>
@@ -338,87 +379,131 @@ inputArticulo.addEventListener("keypress", function(event) {
 			   var vestado= <?php echo $estado ?>;
 			   var vguardado= <?php echo $guardado ?>;
 			   var vidarticulo= $("#articuloSelect").val();
-               var vidalmacen= $("#almacenSelect").val();
+			   var vidalmacen= $("#almacenSelect").val();
 			   var vcantidad= $("#cantidad").val();
-			   var vprecio= $("#precio").val();
-			   var vlote= $("#lote").val(); 
-			   ///alert(vidarticulo);
+			   var subtipo = window.subtipoMovimientoActivo || '';
+			   var vprecio = '';
+			   var vlote = '';
+			   // Si es COMPRAS, tomar los campos visibles
+			   if(subtipo === 'COMPRAS') {
+				   vprecio = $("#precio").val();
+				   vlote = $("#lote").val();
+			   } else {
+				   // Para CARGOS/DESCARGO, obtener precio por AJAX y lote vacío
+				   vlote = '';
+			   }
 			   if (vidarticulo == "" || vidarticulo == "A" || vidarticulo == null ) 
 			   {
 				Swal.fire({
-                           title: "Seleccione el articulo agregar",
-                           icon: "error",
+						   title: "Seleccione el articulo agregar",
+						   icon: "error",
 						   text : "Favor intentar nuevamente.",
-                          draggable: true,
-                        }); 
+						  draggable: true,
+						}); 
 						return false;
 			   }
 			   else if (vidalmacen == "" || vidalmacen == "A" || vidalmacen == null) 
 			   {
-                       Swal.fire({
-                           title: "Seleccione la bodega agregar",
-                           icon: "error",
+					   Swal.fire({
+						   title: "Seleccione la bodega agregar",
+						   icon: "error",
 						   text : "Favor intentar nuevamente.",
-                          draggable: true,
-                        }); 
+						  draggable: true,
+						}); 
 						return false;
 			   }
 			   else if (vcantidad == "" || vcantidad == "0")
 			   {
-                       Swal.fire({
-                           title: "Ingresa la cantidad, esta debe de ser mayor a cero.",
-                           icon: "error",
+					   Swal.fire({
+						   title: "Ingresa la cantidad, esta debe de ser mayor a cero.",
+						   icon: "error",
 						   text : "Favor intentar nuevamente.",
-                          draggable: true,
-                        }); 
+						  draggable: true,
+						}); 
 						return false;
 			   }
-               else if (vprecio == "" || vprecio == "0")
-			   {
-                       Swal.fire({
-                           title: "Ingresa el precio, este debe de ser mayor a cero.",
-                           icon: "error",
+			   // Si no es COMPRAS, obtener precio por AJAX antes de enviar
+			   if(subtipo !== 'COMPRAS') {
+				   $.ajax({
+					   type: "POST",
+					   url: "../procesos/articulos/obtenerPrecioArticulo.php",
+					   data: { idarticulo: vidarticulo },
+					   success: function(respuesta) {
+						   try {
+							   vprecio = JSON.parse(respuesta);
+						   } catch (e) {
+							   vprecio = '';
+						   }
+						   if (vprecio === '' || vprecio == 0) {
+							   Swal.fire({
+								   title: "No se pudo obtener el precio del artículo.",
+								   icon: "error",
+								   text : "Favor intentar nuevamente.",
+								   draggable: true,
+							   });
+							   return false;
+						   }
+						   enviarArticulo();
+					   },
+					   error: function() {
+						   Swal.fire({
+							   title: "No se pudo obtener el precio del artículo.",
+							   icon: "error",
+							   text : "Favor intentar nuevamente.",
+							   draggable: true,
+						   });
+						   return false;
+					   }
+				   });
+			   } else {
+				   if (vprecio === '' || vprecio == 0) {
+					   Swal.fire({
+						   title: "Ingresa el precio, este debe de ser mayor a cero.",
+						   icon: "error",
 						   text : "Favor intentar nuevamente.",
-                          draggable: true,
-                        }); 
-						return false;
-			   } 
-				const inputValue= "id_movimiento="+vidmovimiento+"&id_articulo="+vidarticulo+"&id_bodega_lugar="+vidalmacen+"&precio="+vprecio+"&cantidad="+vcantidad+"&lote="+vlote;				
-				$.ajax({
-					type:"POST",
-					data:inputValue, 
-					url: "../procesos/movimientos/agregaMovimientoDetalle.php",
-					success:function(r){ 
-						if(r==1){
-							 $("#cantidad").val('');
-			                 $("#precio").val('');
-			                 $("#lote").val('');
-							detalleMovimientoArticulo(vidmovimiento,vestado,vguardado);
-							buscarDetalleResume(vidmovimiento);
-
-							$("#articuloSelect").val('A'); 
-							$('#articuloSelect').trigger('change.select2'); 
-						}else{
-						  if (r == 2)
-							{
-                               Swal.fire({
-                                  title: "STOCK INSUFICIENTE",
-                                  icon: "warning",
-								  text : "No tiene suficiente stok en el articulo para realizar salidas.",
-                                  draggable: true,
-                             });  
-							}
-							else{
-								 Swal.fire({
-                                 title: "Error al agregar el articulo.",
-                                 icon: "error",
-								 text : "Favor intentar nuevamente.",
-                                 draggable: true,
-                              });  
-							}
-						}
-					}
-				});
+						   draggable: true,
+					   });
+					   return false;
+				   }
+				   enviarArticulo();
+			   }
+			   function enviarArticulo() {
+				   const inputValue= "id_movimiento="+vidmovimiento+"&id_articulo="+vidarticulo+"&id_bodega_lugar="+vidalmacen+"&precio="+vprecio+"&cantidad="+vcantidad+"&lote="+vlote;
+				   $.ajax({
+					   type:"POST",
+					   data:inputValue, 
+					   url: "../procesos/movimientos/agregaMovimientoDetalle.php",
+					   success:function(r){ 
+						   if(r==1){
+								$("#cantidad").val('');
+								$("#precio").val('');
+								$("#lote").val('');
+							   detalleMovimientoArticulo(vidmovimiento,vestado,vguardado);
+							   buscarDetalleResume(vidmovimiento);
+							   $("#articuloSelect").val('A'); 
+							   $('#articuloSelect').trigger('change.select2'); 
+						   }else{
+							 if (r == 2)
+							   {
+								  Swal.fire({
+									 title: "STOCK INSUFICIENTE",
+									 icon: "warning",
+									 text : "No tiene suficiente stok en el articulo para realizar salidas.",
+									 draggable: true,
+								});  
+							   }
+							   else{
+									Swal.fire({
+									title: "Error al agregar el articulo.",
+									icon: "error",
+									text : "Favor intentar nuevamente.",
+									draggable: true,
+								 });  
+							   }
+						   }
+					   }
+				   });
+			   }
 			});
 		});
 </script> 
