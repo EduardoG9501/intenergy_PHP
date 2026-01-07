@@ -594,6 +594,8 @@ VALUES ('OPERACIONES','ORDEN DE TRABAJO','ORDEN DE TRABAJO','ordenes_trabajo.php
 INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre) 
 VALUES ('OPERACIONES','SOLICITUD DE MATERIAL','SOLICITUD DE MATERIAL','solicitudmaterial.php','fa fa-gear'); 
 INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre) 
+VALUES ('OPERACIONES','PEDIDO DE MATERIALES','PEDIDO DE MATERIALES','pedidomateriales.php','fa fa-gear'); 
+INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre) 
 VALUES ('OPERACIONES','INFORMES DIARIOS','INFORMES DIARIOS','informe_trabajo.php','fa fa-gear'); 
 INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre) 
 VALUES ('OPERACIONES','HORAS DE TRABAJOS','HORAS DE TRABAJOS','horas_trabjo.php','fa fa-gear'); 
@@ -668,6 +670,36 @@ CREATE TABLE obra (
   nombre VARCHAR(250) NOT NULL, 
   estado bit not null default 1,
   fecha_registro DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE estado_pedido_materiales(
+    id_estado_pedido_material INT AUTO_INCREMENT,
+    estado VARCHAR(50),
+    activo BIT NOT NULL DEFAULT 1,
+    PRIMARY KEY(id_estado_pedido_material)
+);
+
+INSERT INTO estado_pedido_materiales (estado) VALUES ('APROBADO'); 
+INSERT INTO estado_pedido_materiales (estado) VALUES ('ANULADO');
+
+CREATE TABLE pedido_materiales (
+    id_pedido_material INT AUTO_INCREMENT PRIMARY KEY,
+    id_orden INT NOT NULL,                           -- Orden de trabajo aprobada
+    fecha_solicitud DATE NOT NULL,                   -- Fecha de la solicitud
+    observacion TEXT,
+    id_estado_pedido_material INT NOT NULL DEFAULT 1,      -- Estado de la solicitud
+    FOREIGN KEY (id_orden) REFERENCES ordenes_trabajo(id_orden),
+    FOREIGN KEY (id_estado_pedido_material) REFERENCES estado_pedido_materiales(id_estado_pedido_material)
+);
+
+CREATE TABLE pedido_materiales_detalle (
+    id_pedido_material_detalle INT AUTO_INCREMENT PRIMARY KEY,
+    id_pedido_material INT NOT NULL,              -- Relaciona con la solicitud principal
+    id_producto INT NOT NULL,                        -- Artículo solicitado (de la tabla articulos)
+    cantidad DECIMAL(10,2) NOT NULL DEFAULT 1,       -- Cantidad solicitada
+	Estado BIT NOT NULL DEFAULT 1,
+    FOREIGN KEY (id_pedido_material) REFERENCES pedido_materiales(id_pedido_material),
+    FOREIGN KEY (id_producto) REFERENCES articulos(id_producto)
 );
 
 DELIMITER //
