@@ -142,7 +142,7 @@ if (!$acceso) {
 							function simplificarFormularioNuevoMovimiento() {
 								var tipo = $('#tipoSelect option:selected').text().trim().toUpperCase();
 								var subtipo = $('#subtipoSelect option:selected').text().trim().toUpperCase();
-								if(tipo === 'ENTRADA' && subtipo === 'CARGOS') {
+								if((tipo === 'ENTRADA' && subtipo === 'CARGOS') || (tipo === 'SALIDA' && subtipo === 'DESCARGO')) {
 									$('#extraCamposNuevoMovimiento').hide();
 								} else {
 									$('#extraCamposNuevoMovimiento').show();
@@ -281,7 +281,7 @@ if (!$acceso) {
 							function simplificarFormularioEditarMovimiento() {
 								var tipo = $('#tipoSelectU option:selected').text().trim().toUpperCase();
 								var subtipo = $('#subtipoSelectU option:selected').text().trim().toUpperCase();
-								if(tipo === 'ENTRADA' && subtipo === 'CARGOS') {
+								if((tipo === 'ENTRADA' && subtipo === 'CARGOS') || (tipo === 'SALIDA' && subtipo === 'DESCARGO')) {
 									$('#extraCamposEditarMovimiento').hide();
 								} else {
 									$('#extraCamposEditarMovimiento').show();
@@ -956,7 +956,7 @@ swal.fire({
 					var $subtipo = $('#subtipoSelect');
 					var encontrado = false;
 					$subtipo.find('option').each(function(){
-						if($(this).text().trim().toUpperCase() === 'CARGOS') {
+						if($(this).text().trim().toUpperCase() === 'CARGOS' || $(this).text().trim().toUpperCase() === 'DESCARGO' ) {
 							$subtipo.val($(this).val()).trigger('change');
 							encontrado = true;
 						}
