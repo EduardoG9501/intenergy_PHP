@@ -357,14 +357,51 @@ label {
         })
         .then(resp => resp.json())
         .then(r => {
-            Swal.fire({
+            document.getElementById('formModal').style.display = 'none';
+            // Modal de opciones tras crear orden
+            if (r.success && r.id_orden) {
+                mostrarModalOpciones(r.id_orden, r.identificador);
+            } else {
+                Swal.fire({
                     title: r.mensaje,
                     icon: "success",
                     draggable: true,
-                }); 
-            document.getElementById('formModal').style.display = 'none';
-            cargarOrdenes();
+                });
+                cargarOrdenes();
+            }
         });
+
+// Modal de opciones tras crear orden
+function mostrarModalOpciones(id_orden, identificador) {
+    const modalHtml = `
+    <div id="modalOpcionesOrden" class="modal" tabindex="-1" style="display:flex; align-items:center; justify-content:center; z-index:9999; background:rgba(0,0,0,0.4); position:fixed; left:0; top:0; width:100%; height:100%;">
+      <div style="background:#fff; padding:30px 30px 20px 30px; border-radius:8px; min-width:320px; text-align:center; position:relative;">
+        <button id="cerrarModalOpciones" style="position:absolute; right:10px; top:10px; background:none; border:none; font-size:20px;">&times;</button>
+        <h4>¿Qué desea hacer con la orden <b>${identificador}</b>?</h4>
+        <div style="margin: 25px 0 10px 0;">
+          <button id="btnIrPedidoMaterial" class="btn btn-info" style="margin:5px 0; width:90%;">Generar Pedido de Material</button><br>
+          <button id="btnIrEjecucionObra" class="btn btn-primary" style="margin:5px 0; width:90%;">Ejecutar Obra</button>
+        </div>
+        <button id="btnCerrarModalOpciones" class="btn btn-secondary" style="margin-top:10px; width:90%;">Cerrar</button>
+      </div>
+    </div>`;
+    let modalDiv = document.createElement('div');
+    modalDiv.innerHTML = modalHtml;
+    document.body.appendChild(modalDiv);
+    // Acciones de los botones
+    document.getElementById('btnIrPedidoMaterial').onclick = function() {
+        window.location.href = `pedidomateriales.php?idorden=${id_orden}`;
+    };
+    document.getElementById('btnIrEjecucionObra').onclick = function() {
+        window.location.href = `ejecucion_obra.php?idorden=${id_orden}`;
+    };
+    document.getElementById('btnCerrarModalOpciones').onclick = cerrarModalOpciones;
+    document.getElementById('cerrarModalOpciones').onclick = cerrarModalOpciones;
+    function cerrarModalOpciones() {
+        document.body.removeChild(modalDiv);
+        cargarOrdenes();
+    }
+}
     }
 
     function cargarBodegas() {
@@ -548,14 +585,8 @@ label {
  // Función para editar una orden
         // Función para PEDIDO DE MATERIALES
         function pedidoMaterial(id_orden) {
-            Swal.fire({
-                title: 'PEDIDO DE MATERIALES',
-                text: `Funcionalidad para Pedido de Materiales de la Orden #${id_orden}`,
-                icon: 'info',
-                confirmButtonText: 'OK'
-            });
-            // Aquí puedes redirigir o abrir modal según lo que se requiera
-            // window.location.href = `ruta_a_pedido_materiales.php?id_orden=${id_orden}`;
+            // Redirigir directamente al menú de pedidos de materiales filtrando por id de orden
+            window.location.href = `pedidomateriales.php?idorden=${id_orden}`;
         }
 
         // Función para EJECUCION DE OBRA

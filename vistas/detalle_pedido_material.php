@@ -6,6 +6,7 @@ require_once "../clases/Conexion.php";
 if(isset($_SESSION['usuario'])){
 	$id_pedido_material = $_GET['id_pedido_material'];
 	$id_estado_pedido_material = $_GET['id_estado_pedido_material'];
+	$idorden = isset($_GET['idorden']) ? $_GET['idorden'] : null;
 ?>
 <!DOCTYPE html>
 <html>
@@ -71,7 +72,9 @@ label { display: flex; flex-direction: column; font-size: 14px;}
 input, select, textarea { padding: 6px; font-size: 15px; border: 1px solid #bbb; border-radius: 5px;}
 label { display: inline-block; max-width: 100%; margin-bottom: 5px; font-weight: bold;}
 </style>
-<script type="text/javascript"> 
+<script type="text/javascript">
+// Obtener idorden de PHP si existe
+var idOrdenFiltro = <?php echo $idorden ? ('"' . $idorden . '"') : 'null'; ?>;
 // Variable global para mantener el estado real de los artículos en el pedido
 let detallesActuales = [];
 
@@ -99,7 +102,11 @@ document.addEventListener('DOMContentLoaded', () => {
 	const btnCancelarDetalle = document.getElementById('btnCancelarDetalle');
 	const btnRegresar = document.getElementById('btnRegresar');
 	btnRegresar.onclick = () => {
-		window.location.href = "pedidomateriales.php";
+		if (idOrdenFiltro) {
+			window.location.href = `pedidomateriales.php?idorden=${idOrdenFiltro}`;
+		} else {
+			window.location.href = "pedidomateriales.php";
+		}
 	};
 	formDetalle.onsubmit = function(e) {
 		e.preventDefault();
