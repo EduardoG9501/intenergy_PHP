@@ -1,0 +1,36 @@
+[11-Jan-2026 15:03:15 America/Guayaquil] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /home/intenerg/public_html/procesos/ejecucion_obra/proceso_ejecucion_obra.php on line 3
+[11-Jan-2026 15:03:15 America/Guayaquil] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /home/intenerg/public_html/procesos/ejecucion_obra/proceso_ejecucion_obra.php on line 3
+[11-Jan-2026 15:03:19 America/Guayaquil] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /home/intenerg/public_html/procesos/ejecucion_obra/proceso_ejecucion_obra.php on line 3
+[11-Jan-2026 15:03:19 America/Guayaquil] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /home/intenerg/public_html/procesos/ejecucion_obra/proceso_ejecucion_obra.php on line 3
+[11-Jan-2026 15:03:21 America/Guayaquil] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /home/intenerg/public_html/procesos/ejecucion_obra/proceso_ejecucion_obra.php on line 3
+[11-Jan-2026 15:03:23 America/Guayaquil] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /home/intenerg/public_html/procesos/ejecucion_obra/proceso_ejecucion_obra.php on line 3
+[11-Jan-2026 15:03:23 America/Guayaquil] PHP Fatal error:  Uncaught mysqli_sql_exception: Data too long for column 'feriado' at row 1 in /home/intenerg/public_html/clases/EjecucionObra.php:103
+Stack trace:
+#0 /home/intenerg/public_html/clases/EjecucionObra.php(103): mysqli_query(Object(mysqli), 'INSERT INTO eje...')
+#1 /home/intenerg/public_html/procesos/ejecucion_obra/proceso_ejecucion_obra.php(18): EjecucionObra->guardar(Array)
+#2 {main}
+  thrown in /home/intenerg/public_html/clases/EjecucionObra.php on line 103
+[11-Jan-2026 15:03:35 America/Guayaquil] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /home/intenerg/public_html/procesos/ejecucion_obra/proceso_ejecucion_obra.php on line 3
+[11-Jan-2026 15:03:35 America/Guayaquil] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /home/intenerg/public_html/procesos/ejecucion_obra/proceso_ejecucion_obra.php on line 3
+[11-Jan-2026 15:03:36 America/Guayaquil] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /home/intenerg/public_html/procesos/ejecucion_obra/proceso_ejecucion_obra.php on line 3
+[11-Jan-2026 15:03:39 America/Guayaquil] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /home/intenerg/public_html/procesos/ejecucion_obra/proceso_ejecucion_obra.php on line 3
+[11-Jan-2026 15:03:39 America/Guayaquil] PHP Fatal error:  Uncaught mysqli_sql_exception: Data too long for column 'feriado' at row 1 in /home/intenerg/public_html/clases/EjecucionObra.php:103
+Stack trace:
+#0 /home/intenerg/public_html/clases/EjecucionObra.php(103): mysqli_query(Object(mysqli), 'INSERT INTO eje...')
+#1 /home/intenerg/public_html/procesos/ejecucion_obra/proceso_ejecucion_obra.php(18): EjecucionObra->guardar(Array)
+#2 {main}
+  thrown in /home/intenerg/public_html/clases/EjecucionObra.php on line 103
+[11-Jan-2026 15:05:05 America/Guayaquil] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /home/intenerg/public_html/procesos/ejecucion_obra/proceso_ejecucion_obra.php on line 3
+[11-Jan-2026 15:05:18 America/Guayaquil] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /home/intenerg/public_html/procesos/ejecucion_obra/proceso_ejecucion_obra.php on line 3
+[11-Jan-2026 15:05:27 America/Guayaquil] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /home/intenerg/public_html/procesos/ejecucion_obra/proceso_ejecucion_obra.php on line 3
+[11-Jan-2026 15:05:27 America/Guayaquil] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /home/intenerg/public_html/procesos/ejecucion_obra/proceso_ejecucion_obra.php on line 3
+[11-Jan-2026 15:05:40 America/Guayaquil] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /home/intenerg/public_html/procesos/ejecucion_obra/proceso_ejecucion_obra.php on line 3
+[11-Jan-2026 15:05:40 America/Guayaquil] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /home/intenerg/public_html/procesos/ejecucion_obra/proceso_ejecucion_obra.php on line 3
+[11-Jan-2026 15:05:40 America/Guayaquil] PHP Fatal error:  Uncaught mysqli_sql_exception: Data too long for column 'feriado' at row 1 in /home/intenerg/public_html/clases/EjecucionObra.php:103
+Stack trace:
+#0 /home/intenerg/public_html/clases/EjecucionObra.php(103): mysqli_query(Object(mysqli), 'INSERT INTO eje...')
+#1 /home/intenerg/public_html/procesos/ejecucion_obra/proceso_ejecucion_obra.php(18): EjecucionObra->guardar(Array)
+#2 {main}
+  thrown in /home/intenerg/public_html/clases/EjecucionObra.php on line 103
+[11-Jan-2026 15:06:34 America/Guayaquil] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /home/intenerg/public_html/procesos/ejecucion_obra/proceso_ejecucion_obra.php on line 3
+[11-Jan-2026 15:06:35 America/Guayaquil] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /home/intenerg/public_html/procesos/ejecucion_obra/proceso_ejecucion_obra.php on line 3

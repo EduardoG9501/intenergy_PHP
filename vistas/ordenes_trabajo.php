@@ -393,7 +393,7 @@ function mostrarModalOpciones(id_orden, identificador) {
         window.location.href = `pedidomateriales.php?idorden=${id_orden}`;
     };
     document.getElementById('btnIrEjecucionObra').onclick = function() {
-        window.location.href = `ejecucion_obra.php?idorden=${id_orden}`;
+        window.location.href = `ejecucionobra.php?idorden=${id_orden}`;
     };
     document.getElementById('btnCerrarModalOpciones').onclick = cerrarModalOpciones;
     document.getElementById('cerrarModalOpciones').onclick = cerrarModalOpciones;
@@ -591,14 +591,8 @@ function mostrarModalOpciones(id_orden, identificador) {
 
         // Función para EJECUCION DE OBRA
         function ejecucionObra(id_orden) {
-            Swal.fire({
-                title: 'EJECUCION DE OBRA',
-                text: `Funcionalidad para Ejecución de Obra de la Orden #${id_orden}`,
-                icon: 'info',
-                confirmButtonText: 'OK'
-            });
-            // Aquí puedes redirigir o abrir modal según lo que se requiera
-            // window.location.href = `ruta_a_ejecucion_obra.php?id_orden=${id_orden}`;
+            // Redirigir directamente al menú de Ejecución de Obra filtrando por id de orden
+            window.location.href = `ejecucionobra.php?idorden=${id_orden}`;
         }
     function editarOrden(id_orden) {
         fetch(`../procesos/ordenestrabajo/orden_trabajo.php?action=obtener&id=${id_orden}`)
