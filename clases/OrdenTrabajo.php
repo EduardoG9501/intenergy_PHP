@@ -83,7 +83,15 @@ class OrdenTrabajo {
             }
             $sql .= " WHERE id_orden=" . intval($data['id_orden']);
             mysqli_query($conexion, $sql);
-            return ['mensaje' => 'Orden editada correctamente'];
+            // Obtener identificador actualizado
+            $sqlGet = "SELECT identificador FROM ordenes_trabajo WHERE id_orden = $id_orden";
+            $resGet = mysqli_query($conexion, $sqlGet);
+            $rowGet = mysqli_fetch_assoc($resGet);
+            return [
+                'mensaje' => 'Orden editada correctamente',
+                'id_orden' => $id_orden,
+                'identificador' => $rowGet ? $rowGet['identificador'] : ''
+            ];
         } else {
             // Insertar
             $id_bodega = $data['id_bodega_principal'];
@@ -103,10 +111,16 @@ class OrdenTrabajo {
             } else {
                 $identificador = $prefijo . $correlativo;
             }
-                $sql = "INSERT INTO ordenes_trabajo (identificador, id_proyecto, id_obra, fecha_inicial, id_bodega_principal, id_estado_orden, estado, observacion)
-                    VALUES ('$identificador', '{$data['id_proyecto']}', '{$data['id_obra']}', '{$data['fecha']}', '{$data['id_bodega_principal']}', '{$data['id_estado_orden']}', 1, '" . mysqli_real_escape_string($conexion, $data['observacion']) . "')";
+            $sql = "INSERT INTO ordenes_trabajo (identificador, id_proyecto, id_obra, fecha_inicial, id_bodega_principal, id_estado_orden, estado, observacion)
+                VALUES ('$identificador', '{$data['id_proyecto']}', '{$data['id_obra']}', '{$data['fecha']}', '{$data['id_bodega_principal']}', '{$data['id_estado_orden']}', 1, '" . mysqli_real_escape_string($conexion, $data['observacion']) . "')";
             mysqli_query($conexion, $sql);
-            return ['mensaje' => 'Orden agregada correctamente'];
+            $id_orden = mysqli_insert_id($conexion);
+            return [
+                'mensaje' => 'Orden agregada correctamente',
+                'id_orden' => $id_orden,
+                'identificador' => $identificador,
+                'success' => true
+            ];
         }
         $c = new conectar();
         $conexion = $c->conexion();

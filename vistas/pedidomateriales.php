@@ -24,15 +24,24 @@ if (!$acceso) {
 </head>
 <body>
 	<div class="container">  
+	<?php if (isset($_GET['idorden'])): ?>
+		<button id="btnRegresarOrden" class="btn btn-warning" onclick="window.location.href='ordenes_trabajo.php'">
+			&larr; Regresar
+		</button>
+		<span style="font-weight:bold; font-size:16px; margin-left:10px;">Orden Trabajo: <span style="font-weight:bold;color: #880202ff;" id="identificadorOrden"></span></span>
+		<script>window._idOrdenTrabajo = '<?php echo $_GET['idorden']; ?>';</script>
+	<?php else: ?>
+		<script>window._idOrdenTrabajo = null;</script>
+	<?php endif; ?>
 	<button id="btnAgregar" class="btn btn-primary">
-      <i class="glyphicon glyphicon-plus"></i> NUEVO
-    </button> 
-    <button id="btnExportExcel" class="btn btn-success">
-       <i class="glyphicon glyphicon-download"></i> Excel
-    </button>
-    <button id="btnExportPDF" class="btn btn-danger">
-         <i class="glyphicon glyphicon-download"></i> PDF
-    </button>
+	  <i class="glyphicon glyphicon-plus"></i> NUEVO
+	</button> 
+	<button id="btnExportExcel" class="btn btn-success">
+	   <i class="glyphicon glyphicon-download"></i> Excel
+	</button>
+	<button id="btnExportPDF" class="btn btn-danger">
+		 <i class="glyphicon glyphicon-download"></i> PDF
+	</button>
 		<!-- Logo oculto para PDF -->
 		<img id="logoEmpresa" src="../img/InteNergy.jpg" style="display:none;" />
 		<hr>    
@@ -72,9 +81,9 @@ if (!$acceso) {
 							<label class="label-custom">OBSERVACIÓN:</label>
 							<textarea style="width: 100%;" id="observacion" name="observacion"></textarea>  
 							<div id="div_estado_pedido" style="display:none;">
-                            <label class="label-custom">ESTADO DEL PEDIDO:</label>
-                                <select class="form-control input-sm" id="id_estado_pedido_material" name="id_estado_pedido_material"></select>
-                            </div>
+							<label class="label-custom">ESTADO DEL PEDIDO:</label>
+								<select class="form-control input-sm" id="id_estado_pedido_material" name="id_estado_pedido_material"></select>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -98,7 +107,13 @@ label { display: inline-block; max-width: 100%; margin-bottom: 5px; font-weight:
 </style>
 <script type="text/javascript"> 
 document.addEventListener('DOMContentLoaded', () => {
-	cargarPedidos();
+	// Si viene de una orden, filtrar y mostrar identificador
+	if (window._idOrdenTrabajo) {
+		cargarPedidosPorOrden(window._idOrdenTrabajo);
+		cargarIdentificadorOrden(window._idOrdenTrabajo);
+	} else {
+		cargarPedidos();
+	}
 	cargarOrdenes();
 
 	const btnAgregar = document.getElementById('btnAgregar');
@@ -141,6 +156,25 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 });
 
+// Cargar solo pedidos de una orden específica
+function cargarPedidosPorOrden(id_orden) {
+	fetch(`../procesos/pedido_materiales/proceso_pedido_material.php?action=listar&id_orden=${id_orden}`)
+		.then(resp => resp.json())
+		.then(data => {
+			pintarGrid(data);
+		});
+}
+// Mostrar identificador de la orden
+function cargarIdentificadorOrden(id_orden) {
+	fetch(`../procesos/ordenestrabajo/orden_trabajo.php?action=obtener&id_orden=${id_orden}`)
+		.then(resp => resp.json())
+		.then(data => {
+			if (data && data.identificador && document.getElementById('identificadorOrden')) {
+				document.getElementById('identificadorOrden').textContent = data.identificador;
+			}
+		});
+}
+
 function cargarPedidos() {
 	fetch('../procesos/pedido_materiales/proceso_pedido_material.php?action=listar')
 		.then(resp => resp.json())
@@ -172,37 +206,83 @@ function cargarEstadosPedido(valorActual = null) {
         });
 }
 function mostrarFormulario(pedido = null) {
-    const formModal = document.getElementById('formModal');
-    const formModalLabel = document.getElementById('formModalLabel');
-    const divEstado = document.getElementById('div_estado_pedido');
-    formModal.style.display = 'flex';
-    if (pedido && pedido.id_orden) {
-        formModalLabel.textContent = 'Editar Pedido de Material';
-        Object.keys(pedido).forEach(k => {
-            if (document.getElementById(k) && k !== 'id_orden') {
-                document.getElementById(k).value = pedido[k];
-            }
-        });
-        cargarOrdenes().then(() => {
-            document.getElementById('id_orden').value = pedido.id_orden;
-            $('#id_orden').trigger('change');
-        });
-        divEstado.style.display = 'block';
-        cargarEstadosPedido(pedido.id_estado_pedido_material);
-    } else {
-        formModalLabel.textContent = 'Agregar Pedido de Material';
-        document.getElementById('formPedido').reset();
-        divEstado.style.display = 'none';
-        cargarOrdenes();
-        // Fecha por defecto
-        const hoy = new Date();
-        const yyyy = hoy.getFullYear();
-        const mm = String(hoy.getMonth() + 1).padStart(2, '0');
-        const dd = String(hoy.getDate()).padStart(2, '0');
-        const fechaHoy = `${yyyy}-${mm}-${dd}`;
-        document.getElementById('fecha_solicitud').value = fechaHoy;
-        document.getElementById('id_pedido_material').value = '';
-    }
+	const formModal = document.getElementById('formModal');
+	const formModalLabel = document.getElementById('formModalLabel');
+	const divEstado = document.getElementById('div_estado_pedido');
+	formModal.style.display = 'flex';
+	const idOrdenCombo = document.getElementById('id_orden');
+	if (pedido && pedido.id_orden) {
+		formModalLabel.textContent = 'Editar Pedido de Material';
+		Object.keys(pedido).forEach(k => {
+			if (document.getElementById(k) && k !== 'id_orden') {
+				document.getElementById(k).value = pedido[k];
+			}
+		});
+		cargarOrdenes().then(() => {
+			idOrdenCombo.value = pedido.id_orden;
+			$('#id_orden').trigger('change');
+			// Si viene de orden, inactivar combo
+			if (window._idOrdenTrabajo) {
+				idOrdenCombo.value = window._idOrdenTrabajo;
+				idOrdenCombo.disabled = true;
+				$(idOrdenCombo).select2({disabled:true});
+				// Agregar input hidden para enviar el valor aunque esté deshabilitado
+				let hiddenOrden = document.getElementById('hidden_id_orden');
+				if (!hiddenOrden) {
+					hiddenOrden = document.createElement('input');
+					hiddenOrden.type = 'hidden';
+					hiddenOrden.id = 'hidden_id_orden';
+					hiddenOrden.name = 'id_orden';
+					idOrdenCombo.parentNode.appendChild(hiddenOrden);
+				}
+				hiddenOrden.value = window._idOrdenTrabajo;
+			} else {
+				idOrdenCombo.disabled = false;
+				$(idOrdenCombo).select2({disabled:false});
+				// Eliminar el hidden si existe
+				let hiddenOrden = document.getElementById('hidden_id_orden');
+				if (hiddenOrden) hiddenOrden.remove();
+			}
+		});
+		divEstado.style.display = 'block';
+		cargarEstadosPedido(pedido.id_estado_pedido_material);
+	} else {
+		formModalLabel.textContent = 'Agregar Pedido de Material';
+		document.getElementById('formPedido').reset();
+		divEstado.style.display = 'none';
+		cargarOrdenes().then(() => {
+			// Si viene de orden, preseleccionar e inactivar combo
+			if (window._idOrdenTrabajo) {
+				idOrdenCombo.value = window._idOrdenTrabajo;
+				idOrdenCombo.disabled = true;
+				$(idOrdenCombo).select2({disabled:true});
+				// Agregar input hidden para enviar el valor aunque esté deshabilitado
+				let hiddenOrden = document.getElementById('hidden_id_orden');
+				if (!hiddenOrden) {
+					hiddenOrden = document.createElement('input');
+					hiddenOrden.type = 'hidden';
+					hiddenOrden.id = 'hidden_id_orden';
+					hiddenOrden.name = 'id_orden';
+					idOrdenCombo.parentNode.appendChild(hiddenOrden);
+				}
+				hiddenOrden.value = window._idOrdenTrabajo;
+			} else {
+				idOrdenCombo.disabled = false;
+				$(idOrdenCombo).select2({disabled:false});
+				// Eliminar el hidden si existe
+				let hiddenOrden = document.getElementById('hidden_id_orden');
+				if (hiddenOrden) hiddenOrden.remove();
+			}
+		});
+		// Fecha por defecto
+		const hoy = new Date();
+		const yyyy = hoy.getFullYear();
+		const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+		const dd = String(hoy.getDate()).padStart(2, '0');
+		const fechaHoy = `${yyyy}-${mm}-${dd}`;
+		document.getElementById('fecha_solicitud').value = fechaHoy;
+		document.getElementById('id_pedido_material').value = '';
+	}
 }
 function editarPedido(id_pedido_material) {
 	fetch(`../procesos/pedido_materiales/proceso_pedido_material.php?action=obtener&id_pedido_material=${id_pedido_material}`)
@@ -226,7 +306,11 @@ function guardarPedido() {
 		}); 
 		if(r.success) {
 			document.getElementById('formModal').style.display = 'none';
-			cargarPedidos();
+			if (window._idOrdenTrabajo) {
+				cargarPedidosPorOrden(window._idOrdenTrabajo);
+			} else {
+				cargarPedidos();
+			}
 		}
 	});
 }
@@ -246,6 +330,8 @@ function pintarGrid(pedidos) {
     tbody.innerHTML = '';
 	pedidos.forEach(pedido => {
 		const tr = document.createElement('tr');
+		// Si hay filtro de orden, agregarlo al enlace Detalle
+		let idOrdenParam = window._idOrdenTrabajo ? `&idorden=${window._idOrdenTrabajo}` : '';
 		tr.innerHTML = `
 			<td>${pedido.id_pedido_material}</td>
 			<td>${pedido.orden_identificador ? pedido.orden_identificador: ''}</td>
@@ -254,7 +340,7 @@ function pintarGrid(pedidos) {
 			<td>${pedido.estado_nombre}</td>
 			<td>
 				<button class="btn btn-warning" onclick="editarPedido(${pedido.id_pedido_material})"><i class="glyphicon glyphicon-edit"></i></button>
-				<a class="btn btn-primary" href="detalle_pedido_material.php?id_pedido_material=${pedido.id_pedido_material}&id_estado_pedido_material=${pedido.id_estado_pedido_material}">Detalle</a>
+				<a class="btn btn-primary" href="detalle_pedido_material.php?id_pedido_material=${pedido.id_pedido_material}&id_estado_pedido_material=${pedido.id_estado_pedido_material}${idOrdenParam}">Detalle</a>
 			</td>
 		`;
 		tbody.appendChild(tr);

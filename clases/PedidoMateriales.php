@@ -4,10 +4,16 @@ class PedidoMateriales {
     public function listar() {
         $c = new conectar();
         $conexion = $c->conexion();
+        $where = '';
+        if (isset($_GET['id_orden']) && is_numeric($_GET['id_orden'])) {
+            $id_orden = intval($_GET['id_orden']);
+            $where = " WHERE pm.id_orden = $id_orden ";
+        }
         $sql = "SELECT pm.*, ot.identificador AS orden_identificador, ot.observacion AS orden_descripcion, epm.estado AS estado_nombre
                 FROM pedido_materiales pm
                 JOIN ordenes_trabajo ot ON pm.id_orden = ot.id_orden
                 JOIN estado_pedido_materiales epm ON pm.id_estado_pedido_material = epm.id_estado_pedido_material
+                $where
                 ORDER BY pm.id_pedido_material DESC";
         $result = mysqli_query($conexion, $sql);
         $datos = [];
