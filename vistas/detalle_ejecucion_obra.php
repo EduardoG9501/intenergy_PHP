@@ -11,7 +11,7 @@ if(isset($_SESSION['usuario'])){
 <!DOCTYPE html>
 <html>
 <head>
-	<title>Detalle de Ejecución de Obra</title>
+	<title>Ejecución de Obra - MATERIAL A UTILIZAR</title>
 	<?php require_once "menu.php"; ?>
 	<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css"/>
 	<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
@@ -30,29 +30,52 @@ if(isset($_SESSION['usuario'])){
 	<!-- Logo oculto para PDF -->
 	<img id="logoEmpresa" src="../img/InteNergy.jpg" style="display:none;" />
 	<hr>
-	<form id="formDetalle" style="display: flex; gap: 15px; align-items: flex-end; background:#deeff9;">
-		<input type="hidden" name="id_ejecucion_obra_detalle_materiales_utilizar" id="id_ejecucion_obra_detalle_materiales_utilizar">
-		<input type="hidden" name="id_ejecucion_obra" value="<?= $id_ejecucion_obra ?>">
-		<label class="label-custom">ARTICULO: </label>  
-		<select name="id_producto" id="id_producto" style="width: 300px;" required></select>
-		<label class="label-custom">CANTIDAD:</label>
-		<input style="width: 100px;" type="number" step="0.01" name="cantidad" id="cantidad" required>
-		<?php  if ($id_estado_ejecucion_obra === "1") { ?> 
-			<button type="submit" id="btnGuardarDetalle" class="btn btn-success">AGREGAR</button>
-			<button type="button" id="btnCancelarDetalle" class="btn btn-danger" style="display:none">CANCELAR</button>
-		 <?php  } else { ?> 
-			<button disabled type="submit" id="btnGuardarDetalle" class="btn btn-success">AGREGAR</button>
-			<button disabled type="button" id="btnCancelarDetalle" class="btn btn-danger" style="display:none">CANCELAR</button>
-		 <?php  }  ?> 
-	</form>
+
+		<div class="container p-3 my-2 bg-light" style="border: 3px solid #b0daf5; padding: 5px; background:#f7fcff; border-radius: 11px; margin-bottom: 10px;">
+			<form id="formDetalle" enctype="multipart/form-data" class="form-horizontal" autocomplete="off" style="margin:0;">
+				<input type="hidden" name="id_ejecucion_obra_detalle_materiales_utilizar" id="id_ejecucion_obra_detalle_materiales_utilizar">
+				<input type="hidden" name="id_ejecucion_obra" value="<?= $id_ejecucion_obra ?>">
+				   <div class="row">
+					   <div class="col-sm-5">
+						   <label>ARTÍCULO</label>
+						<select class="form-control input-sm select2" id="id_producto" name="id_producto">
+							<option value="A">Selecciona artículo</option>
+						</select>
+						   <label>UBICACIÓN</label>
+						   <select style="color: #b95c00;" class="form-control input-sm select2" id="id_bodega_lugar" name="id_bodega_lugar">
+							<option value="A">Selecciona la ubicación</option>
+						</select>
+					   </div>
+					   <div class="col-sm-2">
+						<label>CANTIDAD</label>
+						<input style="color: #1a36e0;font-size: small;" type="number" class="form-control input-sm" id="cantidad" name="cantidad">
+					</div>
+					<div class="col-sm-5">
+						   <label style="margin-top: 5px;">ACCIONES:</label>
+						   <div>
+							   <?php if ($id_estado_ejecucion_obra === "1"){ ?>
+								   <button title="Agregar artículo" type="submit" id="btnGuardarDetalle" class="btn btn-info"><i class="glyphicon glyphicon-plus-sign"></i> AGREGAR</button>
+							   <?php } ?>
+							   <button title="Guardar todo" id="btnGuardarGeneral" class="btn btn-success" style="margin-left:8px;"><i class="glyphicon glyphicon-ok-sign"></i> GUARDAR</button>
+							   <button type="button" id="btnCancelarDetalle" class="btn btn-danger" style="display:none; margin-left:8px;">CANCELAR</button>
+						   </div>
+					</div>
+				</div>
+			</form>
+		</div>
+
 	<hr>
+	<div style="margin-top: 30px; margin-bottom: 10px;">
+		<span style="font-size: 18px; font-weight: bold; color: #337ab7; border-bottom: 2px solid #337ab7; padding-bottom: 2px;">LISTA DE ARTÍCULOS:</span>
+	</div>
 	<table id="gridDetalle" class="display">
 		<thead>
 			<tr>
 				<th>ID</th>
-				<th>ARTICULO</th>
+				<th>ARTÍCULO</th>
+				<th>UBICACIÓN</th>
 				<th>CANTIDAD</th>
-				<th>ACCION</th>
+				<th>ACCIÓN</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -75,9 +98,41 @@ label { display: inline-block; max-width: 100%; margin-bottom: 5px; font-weight:
 <script type="text/javascript">
 var idOrdenFiltro = <?php echo $idorden ? ('"' . $idorden . '"') : 'null'; ?>;
 let detallesActuales = [];
+let contabilizado = false;
+// Verifica si ya está contabilizado para bloquear edición
+function verificarContabilizado() {
+	const id = <?= $id_ejecucion_obra ?>;
+	fetch(`../procesos/ejecucion_obra/proceso_ejecucion_obra.php?action=listar_detalle&id_ejecucion_obra=${id}`)
+		.then(resp => resp.json())
+		.then(data => {
+			contabilizado = data.some(det => det.Contabilizado == 1);
+			if (contabilizado) {
+				document.getElementById('formDetalle').querySelectorAll('input, select, button').forEach(el => {
+					if (el.id !== 'btnGuardarGeneral') el.disabled = true;
+				});
+			}
+		});
+}
 document.addEventListener('DOMContentLoaded', () => {
 	cargarArticulos();
+	cargarBodegas();
 	cargarDetalle();
+	verificarContabilizado();
+	// Cargar bodegas en el combo de ubicación
+	function cargarBodegas() {
+		fetch('../procesos/ejecucion_obra/proceso_ejecucion_obra.php?action=bodegas')
+			.then(resp => resp.json())
+			.then(data => {
+				const sel = document.getElementById('id_bodega_lugar');
+				sel.innerHTML = '<option value="A">Selecciona la ubicación</option>';
+				data.forEach(b => {
+					sel.innerHTML += `<option value="${b.id_bodega}">${b.nombreBodega}</option>`;
+				});
+				if (window.jQuery) {
+					$('#id_bodega_lugar').select2();
+				}
+			});
+	}
 	if (window.jQuery) {
 		$('#exportDetalleExcel').on('click', function(){
 			exportarDetalleEjecucionAExcelConFormato();
@@ -93,6 +148,48 @@ document.addEventListener('DOMContentLoaded', () => {
 			exportarTablaDetalleAPDF(resultados);
 		});
 	}
+	
+	document.getElementById('btnGuardarGeneral').onclick = function(){
+		if (contabilizado) {
+			Swal.fire({
+				icon: 'info',
+				title: 'Ya contabilizado',
+				text: 'Los detalles ya han sido contabilizados y no se puede volver a guardar.'
+			});
+			return;
+		}
+		Swal.fire({
+			title: '¿Está seguro?',
+			text: 'Se generará el movimiento de salida y se contabilizarán los detalles. No podrá editar después.',
+			icon: 'warning',
+			showCancelButton: true,
+			confirmButtonText: 'Sí, contabilizar',
+			cancelButtonText: 'Cancelar'
+		}).then((result) => {
+			if (result.isConfirmed) {
+				fetch('../procesos/ejecucion_obra/proceso_ejecucion_obra.php', {
+					method: 'POST',
+					body: new URLSearchParams({
+						action: 'contabilizar',
+						id_ejecucion_obra: <?= $id_ejecucion_obra ?>
+					})
+				})
+				.then(resp => resp.json())
+				.then(r => {
+					if (r.success) {
+						Swal.fire({ icon: 'success', title: 'Contabilizado', text: r.mensaje });
+						contabilizado = true;
+						document.getElementById('formDetalle').querySelectorAll('input, select, button').forEach(el => {
+							if (el.id !== 'btnGuardarGeneral') el.disabled = true;
+						});
+					} else {
+						Swal.fire({ icon: 'error', title: 'Error', text: r.mensaje });
+					}
+				});
+			}
+		});
+	};
+		 
 	const formDetalle = document.getElementById('formDetalle');
 	const btnCancelarDetalle = document.getElementById('btnCancelarDetalle');
 	const btnRegresar = document.getElementById('btnRegresar');
@@ -104,11 +201,80 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	};
 	formDetalle.onsubmit = function(e) {
+				var cantidad = document.getElementById('cantidad').value;
+				if (cantidad === "" || isNaN(cantidad) || parseFloat(cantidad) <= 0) {
+					Swal.fire({
+						title: 'Cantidad inválida',
+						text: 'Debes ingresar una cantidad mayor a cero.',
+						icon: 'warning',
+						confirmButtonColor: '#7c3aed',
+						confirmButtonText: 'OK'
+					});
+					return false;
+				}
 		e.preventDefault();
+		var id_producto = document.getElementById('id_producto').value;
+		var id_bodega_lugar = document.getElementById('id_bodega_lugar').value;
+		if (id_producto === "A" || id_producto === "" || id_producto === null) {
+			Swal.fire({
+				title: 'Selecciona un artículo',
+				text: 'Debes seleccionar un artículo antes de guardar.',
+				icon: 'warning',
+				confirmButtonColor: '#7c3aed',
+				confirmButtonText: 'OK'
+			});
+			return false;
+		}
+		if (id_bodega_lugar === "A" || id_bodega_lugar === "" || id_bodega_lugar === null) {
+			Swal.fire({
+				title: 'Selecciona la ubicación',
+				text: 'Debes seleccionar una ubicación antes de guardar.',
+				icon: 'warning',
+				confirmButtonColor: '#7c3aed',
+				confirmButtonText: 'OK'
+			});
+			return false;
+		}
 		validarArticuloDuplicadoAntesDeGuardar(function() {
-			guardarDetalle();
+			validarStockAntesDeGuardar(function(stockOk) {
+				if (stockOk) {
+					guardarDetalle();
+				}
+			});
 		});
 	};
+
+	// Validar stock antes de guardar (AJAX a backend)
+	function validarStockAntesDeGuardar(callback) {
+		var id_producto = document.getElementById('id_producto').value;
+		var id_bodega_lugar = document.getElementById('id_bodega_lugar').value;
+		var cantidad = parseFloat(document.getElementById('cantidad').value);
+		fetch(`../procesos/ejecucion_obra/proceso_ejecucion_obra.php?action=validar_stock&id_producto=${id_producto}&id_bodega=${id_bodega_lugar}&cantidad=${cantidad}`)
+		.then(resp => resp.json())
+		.then(data => {
+			var stock = parseFloat(data.stock);
+			if (!data.success || isNaN(stock) || cantidad > stock) {
+				Swal.fire({
+					icon: 'warning',
+					title: 'STOCK INSUFICIENTE',
+					text: 'No tiene suficiente stock en el artículo para realizar salidas.',
+					confirmButtonColor: '#7c3aed',
+					confirmButtonText: 'OK'
+				});
+				callback(false);
+			} else {
+				callback(true);
+			}
+		})
+		.catch(() => {
+			Swal.fire({
+				icon: 'error',
+				title: 'Error',
+				text: 'No se pudo validar el stock. Intente de nuevo.'
+			});
+			callback(false);
+		});
+	}
 
 	function validarArticuloDuplicadoAntesDeGuardar(callback) {
 		var id_producto = document.getElementById('id_producto').value;
@@ -131,15 +297,17 @@ document.addEventListener('DOMContentLoaded', () => {
 	};
 });
 function cargarArticulos() {
-	 fetch('../procesos/ejecucion_obra/proceso_ejecucion_obra.php?action=articulos')
+	fetch('../procesos/ejecucion_obra/proceso_ejecucion_obra.php?action=articulos')
 	.then(resp => resp.json())
 	.then(data => {
 		const sel = document.getElementById('id_producto');
-		sel.innerHTML = '';
+		sel.innerHTML = '<option value="A">Selecciona artículo</option>';
 		data.forEach(a => {
 			sel.innerHTML += `<option value="${a.id_producto}">${a.nombre}</option>`;
 		});
-		$('#id_producto').select2();
+		if (window.jQuery) {
+			$('#id_producto').select2();
+		}
 	});
 }
 function cargarDetalle() {
@@ -180,11 +348,16 @@ function editarDetalle(detalle) {
 	document.getElementById('id_ejecucion_obra_detalle_materiales_utilizar').value = detalle.id_ejecucion_obra_detalle_materiales_utilizar;
 	document.getElementById('id_producto').value = detalle.id_producto;
 	document.getElementById('cantidad').value = detalle.cantidad;
+	document.getElementById('id_bodega_lugar').value = detalle.id_bodega_lugar;
 	document.getElementById('btnGuardarDetalle').textContent = "GUARDAR CAMBIOS";
 	document.getElementById('btnCancelarDetalle').style.display = "";
 	const sel = document.getElementById('id_producto');
 	if (window.jQuery && $(sel).data('select2')) {
 		$(sel).val(detalle.id_producto.toString()).trigger('change');
+	}
+	const selBodega = document.getElementById('id_bodega_lugar');
+	if (window.jQuery && $(selBodega).data('select2')) {
+		$(selBodega).val(detalle.id_bodega_lugar.toString()).trigger('change');
 	}
 }
 function limpiarFormulario() {
@@ -197,6 +370,13 @@ function limpiarFormulario() {
 		sel.selectedIndex = 0;
 		if (window.jQuery && $(sel).data('select2')) {
 			$(sel).val(sel.options[0].value).trigger('change');
+		}
+	}
+	const selBodega = document.getElementById('id_bodega_lugar');
+	if (selBodega && selBodega.options.length > 0) {
+		selBodega.selectedIndex = 0;
+		if (window.jQuery && $(selBodega).data('select2')) {
+			$(selBodega).val(selBodega.options[0].value).trigger('change');
 		}
 	}
 }
@@ -235,39 +415,42 @@ function eliminarDetalle(id) {
 	});
 }
 function pintarGridDetalle(detalles) {
-	detallesActuales = detalles.map(det => det.articulo_nombre);
-	const $grid = $('#gridDetalle');
-	if ($.fn.DataTable.isDataTable($grid)) {
-		$grid.DataTable().destroy();
-	} 
-	const tbody = document.querySelector('#gridDetalle tbody');
-	tbody.innerHTML = '';
-	detalles.forEach(det => {
-		const tr = document.createElement('tr');
-		tr.innerHTML = `
-			<td>${det.id_ejecucion_obra_detalle_materiales_utilizar}</td>
-			<td>${det.articulo_nombre}</td>
-			<td>${det.cantidad}</td>
-			<?php  if ($id_estado_ejecucion_obra === "1") { ?> 
-			<td>
-				<button class="btn btn-warning" onclick='editarDetalle(${JSON.stringify(det)})'><i class="glyphicon glyphicon-edit"></i></button>
-				<button class="btn btn-danger" onclick='eliminarDetalle(${det.id_ejecucion_obra_detalle_materiales_utilizar})'><i class="glyphicon glyphicon-trash"></i></button>
-			</td>
-			<?php  } else {  ?> 
-			 <td>
-				<button disabled class="btn btn-warning" onclick='editarDetalle(${JSON.stringify(det)})'><i class="glyphicon glyphicon-edit"></i></button>
-				<button disabled class="btn btn-danger" onclick='eliminarDetalle(${det.id_ejecucion_obra_detalle_materiales_utilizar})'><i class="glyphicon glyphicon-trash"></i></button>
-			</td>
-			  <?php  } ?> 
-		`;
-		tbody.appendChild(tr);
-	});
-	$('#gridDetalle').DataTable({
-		responsive: true,
-		destroy: true,
-		order: [[0, 'desc']]
-	});
-}
+	 detallesActuales = detalles.map(det => det.articulo_nombre);
+	 const $grid = $('#gridDetalle');
+	 if ($.fn.DataTable.isDataTable($grid)) {
+		 $grid.DataTable().destroy();
+	 }
+	 const tbody = document.querySelector('#gridDetalle tbody');
+	 tbody.innerHTML = '';
+	 detalles.forEach(det => {
+		 const tr = document.createElement('tr');
+		 let acciones = '';
+		 if (window.id_estado_ejecucion_obra === "1") {
+			 acciones = `
+				 <button class="btn btn-warning" onclick='editarDetalle(${JSON.stringify(det)})'><i class="glyphicon glyphicon-edit"></i></button>
+				 <button class="btn btn-danger" onclick='eliminarDetalle(${det.id_ejecucion_obra_detalle_materiales_utilizar})'><i class="glyphicon glyphicon-trash"></i></button>
+			 `;
+		 } else {
+			 acciones = `
+				 <button disabled class="btn btn-warning" onclick='editarDetalle(${JSON.stringify(det)})'><i class="glyphicon glyphicon-edit"></i></button>
+				 <button disabled class="btn btn-danger" onclick='eliminarDetalle(${det.id_ejecucion_obra_detalle_materiales_utilizar})'><i class="glyphicon glyphicon-trash"></i></button>
+			 `;
+		 }
+		 tr.innerHTML = `
+			 <td>${det.id_ejecucion_obra_detalle_materiales_utilizar}</td>
+			 <td>${det.articulo_nombre}</td>
+			 <td>${det.nombreBodega ? det.nombreBodega : (det.bodega_nombre ? det.bodega_nombre : (det.ubicacion_nombre ? det.ubicacion_nombre : det.id_bodega_lugar))}</td>
+			 <td>${det.cantidad}</td>
+			 <td>${acciones}</td>
+		 `;
+		 tbody.appendChild(tr);
+	 });
+	 $('#gridDetalle').DataTable({
+		 responsive: true,
+		 destroy: true,
+		 order: [[0, 'desc']]
+	 });
+ }
 function getBase64Image(imgElement) {
 	const canvas = document.createElement("canvas");
 	canvas.width = imgElement.width;

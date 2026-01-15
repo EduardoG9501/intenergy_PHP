@@ -223,7 +223,9 @@ function pintarGridEjecucion(ejecuciones) {
 			<td>${ejecucion.estado_nombre}</td>
 			<td>
 				<button class="btn btn-warning" onclick="editarEjecucion(${ejecucion.id_ejecucion_obra})"><i class="glyphicon glyphicon-edit"></i></button>
-				<a class="btn btn-primary" href="detalle_ejecucion_obra.php?id_ejecucion_obra=${ejecucion.id_ejecucion_obra}&id_estado_ejecucion_obra=${ejecucion.id_estado_ejecucion_obra}${idOrdenParam}">Detalle</a>
+				<a class="btn btn-info" href="detalle_ejecucion_obra.php?id_ejecucion_obra=${ejecucion.id_ejecucion_obra}&id_estado_ejecucion_obra=${ejecucion.id_estado_ejecucion_obra}${idOrdenParam}">MATERIALES</a>
+				<a class="btn btn-primary" href="detalle_ejecucion_obra.php?id_ejecucion_obra=${ejecucion.id_ejecucion_obra}&id_estado_ejecucion_obra=${ejecucion.id_estado_ejecucion_obra}${idOrdenParam}">HORA T.</a>
+				<a class="btn btn-success" href="detalle_ejecucion_obra.php?id_ejecucion_obra=${ejecucion.id_ejecucion_obra}&id_estado_ejecucion_obra=${ejecucion.id_estado_ejecucion_obra}${idOrdenParam}">INFORME D.</a>
 			</td>
 		`;
 		tbody.appendChild(tr);

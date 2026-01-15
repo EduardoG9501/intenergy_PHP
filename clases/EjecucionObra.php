@@ -1,5 +1,100 @@
-<?php
-class EjecucionObra {
+<?php 
+	class EjecucionObra {
+		// Genera movimiento SALIDA/DESCARGO y contabiliza los detalles
+		public function contabilizarYGenerarMovimiento($id_ejecucion_obra, $usuario) {
+		$c = new conectar();
+		$conexion = $c->conexion();
+		// 1. Obtener detalles no contabilizados
+		$sql_det = "SELECT ed.*, a.precio, a.nombre as articulo_nombre, eo.id_orden, eo.fecha_solicitud, eo.observacion, eo.id_ejecucion_obra, eo.id_estado_ejecucion_obra, ot.id_bodega_principal
+					FROM ejecucion_obra_detalle_materiales_utilizar ed
+					JOIN articulos a ON a.id_producto = ed.id_producto
+					JOIN ejecucion_obra eo ON eo.id_ejecucion_obra = ed.id_ejecucion_obra
+					JOIN ordenes_trabajo ot ON eo.id_orden = ot.id_orden
+					WHERE ed.id_ejecucion_obra = $id_ejecucion_obra AND ed.Contabilizado = 0 AND ed.Estado = 1";
+		$res_det = mysqli_query($conexion, $sql_det);
+		$detalles = [];
+		while($row = mysqli_fetch_assoc($res_det)) {
+			$detalles[] = $row;
+		}
+		if (count($detalles) == 0) {
+			return ['success' => false, 'mensaje' => 'No hay detalles para contabilizar.'];
+		}
+		// 2. Validar stock
+		$articulos_faltantes = [];
+		foreach($detalles as $art) {
+			$id_producto = $art['id_producto'];
+			$id_bodega = $art['id_bodega_lugar'];
+			$cantidad = $art['cantidad'];
+			$stock = $this->obtenerStockDisponible($id_producto, $id_bodega);
+			if ($stock < $cantidad) {
+				$articulos_faltantes[] = $art['articulo_nombre'];
+			}
+		}
+		if (count($articulos_faltantes) > 0) {
+			return ['success' => false, 'mensaje' => 'No hay stock suficiente para: ' . implode(', ', $articulos_faltantes)];
+		}
+		// 3. Obtener id_usuario
+		$id_usuario = null;
+		$sqlUser = "SELECT id_usuario FROM usuarios WHERE email = '".mysqli_real_escape_string($conexion, $usuario)."' LIMIT 1";
+		$resUser = mysqli_query($conexion, $sqlUser);
+		if ($rowUser = mysqli_fetch_assoc($resUser)) {
+			$id_usuario = intval($rowUser['id_usuario']);
+		}
+		if (!$id_usuario) {
+			return ['success' => false, 'mensaje' => 'No se pudo asociar el usuario al movimiento.'];
+		}
+		// 4. Insertar movimiento SALIDA/DESCARGO
+		$id_tipo_movimiento = 2; // SALIDA
+		$id_sub_tipo_movimiento = 3; // DESCARGO
+		$id_bodega = $detalles[0]['id_bodega_lugar'];
+		$id_bodega_principal = $detalles[0]['id_bodega_principal'];
+		$no_documento = 'EJEC-'.$id_ejecucion_obra;
+		$fechaDocumento = date('Y-m-d');
+		$observacion = 'MOVIMIENTO AUTOMATICO DE EJECUCION DE OBRA #'.$id_ejecucion_obra;
+		$sql_mov = "INSERT INTO movimientos (id_tipo_movimiento, id_sub_tipo_movimiento, id_bodega, no_documento, fechaDocumento, observacion, estado, guardarDefinitivo, id_usuario) VALUES ($id_tipo_movimiento, $id_sub_tipo_movimiento, $id_bodega_principal, '$no_documento', '$fechaDocumento', '$observacion', 1, 1, $id_usuario)";
+		mysqli_query($conexion, $sql_mov);
+		$id_movimiento = mysqli_insert_id($conexion);
+		// 5. Insertar detalles
+		foreach($detalles as $art) {
+			$id_producto = $art['id_producto'];
+			$cantidad = $art['cantidad'];
+			$precio = floatval($art['precio']);
+			$subtotal = $cantidad * $precio;
+			$total = $subtotal;
+			$id_bodega_lugar = $art['id_bodega_lugar'];
+			$sql_mov_det = "INSERT INTO movimientos_detalle (id_movimiento, id_articulo, id_bodega_lugar, precio, cantidad, lote, bonificacion, subtotal, decuento, iva, total, iva_porc, desc_porc, estado) VALUES ($id_movimiento, $id_producto, $id_bodega_lugar, $precio, $cantidad, NULL, NULL, $subtotal, 0, 0, $total, 0, 0, 1)";
+			mysqli_query($conexion, $sql_mov_det);
+		}
+		// 6. Insertar en stock_productos
+		$fecha = date('Y-m-d');
+		$sql2 = "INSERT into stock_productos (id_movimiento, id_tipo_movimiento, id_sub_tipo_movimiento, no_documento, id_bodega_principal, id_bodega_secundaria, tipo_movimiento, sub_tipo_movimiento, id_movimiento_detalle, id_producto, producto, lote, precio, cantidad, subtotal, decuento, iva, total, stock, id_stock_credito, id_usuario, fecha_captura) SELECT DISTINCT det.id_movimiento, mov.id_tipo_movimiento, mov.id_sub_tipo_movimiento, mov.no_documento, mov.id_bodega idBodegaPrincipal, det.id_bodega_lugar IdBodegaSecundaria, tm.tipo TipoMovimiento, stm.sub_tipo SubTipoMovimiento, det.id_movimiento_detalle, art.id_producto, art.nombre, det.lote, det.precio, det.cantidad, det.subtotal, det.decuento, det.iva, det.total, det.cantidad stock, 0 id_stock_credito, mov.id_usuario, '$fecha' fecha_captura from movimientos_detalle as det inner join movimientos mov on det.id_movimiento = mov.id_movimiento inner join tipo_movimiento tm on mov.id_tipo_movimiento = tm.id_tipo_movimiento inner join sub_tipo_movimiento stm on mov.id_sub_tipo_movimiento = stm.id_sub_tipo_movimiento inner join articulos art on det.id_articulo= art.id_producto inner join bodegas bod on  det.id_bodega_lugar= bod.id_bodega where det.id_movimiento='$id_movimiento'";
+		$resultadoStock =  mysqli_query($conexion,$sql2);
+		// 7. Actualizar totales del movimiento
+		$sql_sum = "SELECT SUM(subtotal) AS subtotal_mto, SUM(total) AS total_mto FROM movimientos_detalle WHERE id_movimiento = $id_movimiento";
+		$res_sum = mysqli_query($conexion, $sql_sum);
+		$row_sum = mysqli_fetch_assoc($res_sum);
+		$subtotal_mto = $row_sum ? floatval($row_sum['subtotal_mto']) : 0;
+		$total_mto = $row_sum ? floatval($row_sum['total_mto']) : 0;
+		$sql_update_mov = "UPDATE movimientos SET subtotal_mto = $subtotal_mto, total_mto = $total_mto WHERE id_movimiento = $id_movimiento";
+		mysqli_query($conexion, $sql_update_mov);
+		// 8. Actualizar stock de articulos
+		$sql10 = "CALL actualizar_cantidad_articulos_por_movimiento($id_movimiento)";
+		mysqli_query($conexion, $sql10);
+		// 9. Marcar detalles como contabilizados
+		$sql_cont = "UPDATE ejecucion_obra_detalle_materiales_utilizar SET Contabilizado = 1 WHERE id_ejecucion_obra = $id_ejecucion_obra AND Estado = 1";
+		mysqli_query($conexion, $sql_cont);
+		return ['success' => true, 'mensaje' => 'Movimiento generado y detalles contabilizados.'];
+	}
+	       // Obtener stock disponible por producto y bodega (igual a movimientos.php)
+	       private function obtenerStockDisponible($idProducto, $idBodega) {
+		       $c = new conectar();
+		       $conexion = $c->conexion();
+		       $sql = "SELECT cantidad FROM stock_productos_bodega WHERE id_producto = '$idProducto' AND id_bodega_principal = '$idBodega' AND estado = 1";
+		       // Eliminar cualquier echo, print o var_dump aquí
+		       $result = mysqli_query($conexion, $sql);
+		       $row = mysqli_fetch_assoc($result);
+		       return $row ? floatval($row['cantidad']) : 0;
+	       }
 	// --- CRUD principal ---
 	public function listar() {
 		$c = new conectar();
@@ -27,7 +122,7 @@ class EjecucionObra {
 	public function listarDetalle($id_ejecucion_obra) {
 		$c = new conectar();
 		$conexion = $c->conexion();
-		$sql = "SELECT ed.*, a.nombre as articulo_nombre FROM ejecucion_obra_detalle_materiales_utilizar ed JOIN articulos a ON ed.id_producto = a.id_producto WHERE ed.id_ejecucion_obra = $id_ejecucion_obra";
+		$sql = "SELECT ed.*, a.nombre as articulo_nombre, b.nombreBodega FROM ejecucion_obra_detalle_materiales_utilizar ed JOIN articulos a ON ed.id_producto = a.id_producto JOIN bodegas b ON ed.id_bodega_lugar = b.id_bodega WHERE ed.id_ejecucion_obra = $id_ejecucion_obra";
 		$result = mysqli_query($conexion, $sql);
 		$datos = [];
 		while ($fila = mysqli_fetch_assoc($result)) {
@@ -39,8 +134,21 @@ class EjecucionObra {
 	public function guardarDetalle($data) {
 		$c = new conectar();
 		$conexion = $c->conexion();
+		// Validar stock antes de guardar (solo para salida de materiales)
+		$id_producto = $data['id_producto'];
+		$id_bodega_lugar = $data['id_bodega_lugar'] ?? null;
+		$cantidad = $data['cantidad'];
+		if ($id_bodega_lugar) {
+			$stockDisponible = $this->obtenerStockDisponible($id_producto, $id_bodega_lugar);
+			if ($cantidad > $stockDisponible) {
+				return [
+					'success' => false,
+					'mensaje' => 'Stock insuficiente en la bodega seleccionada. Disponible: ' . $stockDisponible
+				];
+			}
+		}
 		if (!empty($data['id_ejecucion_obra_detalle_materiales_utilizar'])) {
-			$sql = "UPDATE ejecucion_obra_detalle_materiales_utilizar SET id_producto='{$data['id_producto']}', cantidad='{$data['cantidad']}' WHERE id_ejecucion_obra_detalle_materiales_utilizar={$data['id_ejecucion_obra_detalle_materiales_utilizar']}";
+			$sql = "UPDATE ejecucion_obra_detalle_materiales_utilizar SET id_producto='{$data['id_producto']}', cantidad='{$data['cantidad']}', id_bodega_lugar='{$data['id_bodega_lugar']}' WHERE id_ejecucion_obra_detalle_materiales_utilizar={$data['id_ejecucion_obra_detalle_materiales_utilizar']}";
 			$ok = mysqli_query($conexion, $sql);
 			return [
 				'success' => $ok,
@@ -48,7 +156,7 @@ class EjecucionObra {
 				'mensaje' => $ok ? 'Detalle actualizado correctamente' : 'Error al actualizar detalle'
 			];
 		} else {
-			$sql = "INSERT INTO ejecucion_obra_detalle_materiales_utilizar (id_ejecucion_obra, id_producto, cantidad, Estado) VALUES ('{$data['id_ejecucion_obra']}', '{$data['id_producto']}', '{$data['cantidad']}', 1)";
+			$sql = "INSERT INTO ejecucion_obra_detalle_materiales_utilizar (id_ejecucion_obra, id_producto, cantidad, id_bodega_lugar, Estado) VALUES ('{$data['id_ejecucion_obra']}', '{$data['id_producto']}', '{$data['cantidad']}', '{$data['id_bodega_lugar']}', 1)";
 			$ok = mysqli_query($conexion, $sql);
 			$id = mysqli_insert_id($conexion);
 			return [

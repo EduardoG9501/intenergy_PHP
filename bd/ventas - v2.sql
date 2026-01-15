@@ -730,8 +730,11 @@ CREATE TABLE ejecucion_obra_detalle_materiales_utilizar (
     id_ejecucion_obra INT NOT NULL,              -- Relaciona con la solicitud principal
     id_producto INT NOT NULL,                        -- Artículo solicitado (de la tabla articulos)
     cantidad DECIMAL(10,2) NOT NULL DEFAULT 1,       -- Cantidad solicitada
+    id_bodega_lugar int not null,
+    Contabilizado BIT NOT NULL DEFAULT 0,
 	Estado BIT NOT NULL DEFAULT 1,
     FOREIGN KEY (id_ejecucion_obra) REFERENCES ejecucion_obra(id_ejecucion_obra),
+    FOREIGN KEY (id_bodega_lugar) REFERENCES bodegas(id_bodega),
     FOREIGN KEY (id_producto) REFERENCES articulos(id_producto)
 );
 
