@@ -594,7 +594,9 @@ VALUES ('OPERACIONES','ORDEN DE TRABAJO','ORDEN DE TRABAJO','ordenes_trabajo.php
 INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre) 
 VALUES ('OPERACIONES','SOLICITUD DE MATERIAL','SOLICITUD DE MATERIAL','solicitudmaterial.php','fa fa-gear'); 
 INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre) 
-VALUES ('OPERACIONES','PEDIDO DE MATERIALES','PEDIDO DE MATERIALES','pedidomateriales.php','fa fa-gear'); 
+VALUES ('OPERACIONES','PEDIDO DE MATERIALES','PEDIDO DE MATERIALES','pedidomateriales.php','fa fa-gear');
+INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre) 
+VALUES ('OPERACIONES','EJECUCIÓN DE OBRA','EJECUCIÓN DE OBRA','ejecucionobra.php','fa fa-gear');
 INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre) 
 VALUES ('OPERACIONES','INFORMES DIARIOS','INFORMES DIARIOS','informe_trabajo.php','fa fa-gear'); 
 INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre) 
@@ -699,6 +701,40 @@ CREATE TABLE pedido_materiales_detalle (
     cantidad DECIMAL(10,2) NOT NULL DEFAULT 1,       -- Cantidad solicitada
 	Estado BIT NOT NULL DEFAULT 1,
     FOREIGN KEY (id_pedido_material) REFERENCES pedido_materiales(id_pedido_material),
+    FOREIGN KEY (id_producto) REFERENCES articulos(id_producto)
+);
+
+CREATE TABLE estado_ejecucion_obra(
+    id_estado_ejecucion_obra INT AUTO_INCREMENT,
+    estado VARCHAR(50),
+    activo BIT NOT NULL DEFAULT 1,
+    PRIMARY KEY(id_estado_ejecucion_obra)
+);
+
+INSERT INTO estado_ejecucion_obra(estado) VALUES ('PENDIENTE'); 
+INSERT INTO estado_ejecucion_obra (estado) VALUES ('TERMINADO');
+
+CREATE TABLE ejecucion_obra (
+    id_ejecucion_obra INT AUTO_INCREMENT PRIMARY KEY,
+    id_orden INT NOT NULL,                           -- Orden de trabajo aprobada
+    fecha_solicitud DATE NOT NULL,    
+    feriado BIT NOT NULL DEFAULT 0,               
+    observacion TEXT,
+    id_estado_ejecucion_obra INT NOT NULL DEFAULT 1,      -- Estado de la solicitud
+    FOREIGN KEY (id_orden) REFERENCES ordenes_trabajo(id_orden),
+    FOREIGN KEY (id_estado_ejecucion_obra) REFERENCES estado_ejecucion_obra(id_estado_ejecucion_obra)
+);
+
+CREATE TABLE ejecucion_obra_detalle_materiales_utilizar (
+    id_ejecucion_obra_detalle_materiales_utilizar INT AUTO_INCREMENT PRIMARY KEY,
+    id_ejecucion_obra INT NOT NULL,              -- Relaciona con la solicitud principal
+    id_producto INT NOT NULL,                        -- Artículo solicitado (de la tabla articulos)
+    cantidad DECIMAL(10,2) NOT NULL DEFAULT 1,       -- Cantidad solicitada
+    id_bodega_lugar int not null,
+    Contabilizado BIT NOT NULL DEFAULT 0,
+	Estado BIT NOT NULL DEFAULT 1,
+    FOREIGN KEY (id_ejecucion_obra) REFERENCES ejecucion_obra(id_ejecucion_obra),
+    FOREIGN KEY (id_bodega_lugar) REFERENCES bodegas(id_bodega),
     FOREIGN KEY (id_producto) REFERENCES articulos(id_producto)
 );
 
