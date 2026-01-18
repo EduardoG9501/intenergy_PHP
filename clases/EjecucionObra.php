@@ -43,32 +43,50 @@
 		if (!$id_usuario) {
 			return ['success' => false, 'mensaje' => 'No se pudo asociar el usuario al movimiento.'];
 		}
-		// 4. Insertar movimiento SALIDA/DESCARGO
-		$id_tipo_movimiento = 2; // SALIDA
-		$id_sub_tipo_movimiento = 3; // DESCARGO
-		$id_bodega = $detalles[0]['id_bodega_lugar'];
-		$id_bodega_principal = $detalles[0]['id_bodega_principal'];
-		$no_documento = 'EJEC-'.$id_ejecucion_obra;
-		$fechaDocumento = date('Y-m-d');
-		$observacion = 'MOVIMIENTO AUTOMATICO DE EJECUCION DE OBRA #'.$id_ejecucion_obra;
-		$sql_mov = "INSERT INTO movimientos (id_tipo_movimiento, id_sub_tipo_movimiento, id_bodega, no_documento, fechaDocumento, observacion, estado, guardarDefinitivo, id_usuario) VALUES ($id_tipo_movimiento, $id_sub_tipo_movimiento, $id_bodega_principal, '$no_documento', '$fechaDocumento', '$observacion', 1, 1, $id_usuario)";
-		mysqli_query($conexion, $sql_mov);
-		$id_movimiento = mysqli_insert_id($conexion);
-		// 5. Insertar detalles
-		foreach($detalles as $art) {
-			$id_producto = $art['id_producto'];
-			$cantidad = $art['cantidad'];
-			$precio = floatval($art['precio']);
-			$subtotal = $cantidad * $precio;
-			$total = $subtotal;
-			$id_bodega_lugar = $art['id_bodega_lugar'];
-			$sql_mov_det = "INSERT INTO movimientos_detalle (id_movimiento, id_articulo, id_bodega_lugar, precio, cantidad, lote, bonificacion, subtotal, decuento, iva, total, iva_porc, desc_porc, estado) VALUES ($id_movimiento, $id_producto, $id_bodega_lugar, $precio, $cantidad, NULL, NULL, $subtotal, 0, 0, $total, 0, 0, 1)";
-			mysqli_query($conexion, $sql_mov_det);
+		// 4. Agrupar detalles por bodega y generar un movimiento por cada bodega
+		$detalles_por_bodega = [];
+		foreach ($detalles as $art) {
+			$detalles_por_bodega[$art['id_bodega_lugar']][] = $art;
 		}
-		// 6. Insertar en stock_productos
-		$fecha = date('Y-m-d');
-		$sql2 = "INSERT into stock_productos (id_movimiento, id_tipo_movimiento, id_sub_tipo_movimiento, no_documento, id_bodega_principal, id_bodega_secundaria, tipo_movimiento, sub_tipo_movimiento, id_movimiento_detalle, id_producto, producto, lote, precio, cantidad, subtotal, decuento, iva, total, stock, id_stock_credito, id_usuario, fecha_captura) SELECT DISTINCT det.id_movimiento, mov.id_tipo_movimiento, mov.id_sub_tipo_movimiento, mov.no_documento, mov.id_bodega idBodegaPrincipal, det.id_bodega_lugar IdBodegaSecundaria, tm.tipo TipoMovimiento, stm.sub_tipo SubTipoMovimiento, det.id_movimiento_detalle, art.id_producto, art.nombre, det.lote, det.precio, det.cantidad, det.subtotal, det.decuento, det.iva, det.total, det.cantidad stock, 0 id_stock_credito, mov.id_usuario, '$fecha' fecha_captura from movimientos_detalle as det inner join movimientos mov on det.id_movimiento = mov.id_movimiento inner join tipo_movimiento tm on mov.id_tipo_movimiento = tm.id_tipo_movimiento inner join sub_tipo_movimiento stm on mov.id_sub_tipo_movimiento = stm.id_sub_tipo_movimiento inner join articulos art on det.id_articulo= art.id_producto inner join bodegas bod on  det.id_bodega_lugar= bod.id_bodega where det.id_movimiento='$id_movimiento'";
-		$resultadoStock =  mysqli_query($conexion,$sql2);
+		$ids_movimientos_generados = [];
+		foreach ($detalles_por_bodega as $id_bodega_lugar => $detalles_bodega) {
+			$id_tipo_movimiento = 2; // SALIDA
+			$id_sub_tipo_movimiento = 3; // DESCARGO
+			$id_bodega_principal = $id_bodega_lugar;
+			$no_documento = 'EJEC-'.$id_ejecucion_obra.'-BOD-'.$id_bodega_lugar;
+			$fechaDocumento = date('Y-m-d');
+			$observacion = 'MOVIMIENTO AUTOMATICO DE EJECUCION DE OBRA #'.$id_ejecucion_obra.' BODEGA '.$id_bodega_lugar;
+			$sql_mov = "INSERT INTO movimientos (id_tipo_movimiento, id_sub_tipo_movimiento, id_bodega, no_documento, fechaDocumento, observacion, estado, guardarDefinitivo, id_usuario) VALUES ($id_tipo_movimiento, $id_sub_tipo_movimiento, $id_bodega_principal, '$no_documento', '$fechaDocumento', '$observacion', 1, 1, $id_usuario)";
+			mysqli_query($conexion, $sql_mov);
+			$id_movimiento = mysqli_insert_id($conexion);
+			$ids_movimientos_generados[] = $id_movimiento;
+			// Insertar detalles solo de esta bodega
+			foreach($detalles_bodega as $art) {
+				$id_producto = $art['id_producto'];
+				$cantidad = $art['cantidad'];
+				$precio = floatval($art['precio']);
+				$subtotal = $cantidad * $precio;
+				$total = $subtotal;
+				$sql_mov_det = "INSERT INTO movimientos_detalle (id_movimiento, id_articulo, id_bodega_lugar, precio, cantidad, lote, bonificacion, subtotal, decuento, iva, total, iva_porc, desc_porc, estado) VALUES ($id_movimiento, $id_producto, $id_bodega_principal, $precio, $cantidad, NULL, NULL, $subtotal, 0, 0, $total, 0, 0, 1)";
+				mysqli_query($conexion, $sql_mov_det);
+			}
+			// Actualizar totales del movimiento
+			$sql_sum = "SELECT SUM(subtotal) AS subtotal_mto, SUM(total) AS total_mto FROM movimientos_detalle WHERE id_movimiento = $id_movimiento";
+			$res_sum = mysqli_query($conexion, $sql_sum);
+			$row_sum = mysqli_fetch_assoc($res_sum);
+			$subtotal_mto = $row_sum ? floatval($row_sum['subtotal_mto']) : 0;
+			$total_mto = $row_sum ? floatval($row_sum['total_mto']) : 0;
+			$sql_update_mov = "UPDATE movimientos SET subtotal_mto = $subtotal_mto, total_mto = $total_mto WHERE id_movimiento = $id_movimiento";
+			mysqli_query($conexion, $sql_update_mov);
+			   // Insertar en stock_productos
+			   $fecha = date('Y-m-d');
+			   $sql2 = "INSERT into stock_productos (id_movimiento, id_tipo_movimiento, id_sub_tipo_movimiento, no_documento, id_bodega_principal, id_bodega_secundaria, tipo_movimiento, sub_tipo_movimiento, id_movimiento_detalle, id_producto, producto, lote, precio, cantidad, subtotal, decuento, iva, total, stock, id_stock_credito, id_usuario, fecha_captura) SELECT DISTINCT det.id_movimiento, mov.id_tipo_movimiento, mov.id_sub_tipo_movimiento, mov.no_documento, mov.id_bodega idBodegaPrincipal, det.id_bodega_lugar IdBodegaSecundaria, tm.tipo TipoMovimiento, stm.sub_tipo SubTipoMovimiento, det.id_movimiento_detalle, art.id_producto, art.nombre, det.lote, det.precio, det.cantidad, det.subtotal, det.decuento, det.iva, det.total, det.cantidad stock, 0 id_stock_credito, mov.id_usuario, '$fecha' fecha_captura from movimientos_detalle as det inner join movimientos mov on det.id_movimiento = mov.id_movimiento inner join tipo_movimiento tm on mov.id_tipo_movimiento = tm.id_tipo_movimiento inner join sub_tipo_movimiento stm on mov.id_sub_tipo_movimiento = stm.id_sub_tipo_movimiento inner join articulos art on det.id_articulo= art.id_producto inner join bodegas bod on  det.id_bodega_lugar= bod.id_bodega where det.id_movimiento='$id_movimiento'";
+			   mysqli_query($conexion,$sql2);
+			// Actualizar stock de articulos
+			$sql10 = "CALL actualizar_cantidad_articulos_por_movimiento($id_movimiento)";
+			mysqli_query($conexion, $sql10);
+		}
+		// ...eliminado para evitar duplicidad...
 		// 7. Actualizar totales del movimiento
 		$sql_sum = "SELECT SUM(subtotal) AS subtotal_mto, SUM(total) AS total_mto FROM movimientos_detalle WHERE id_movimiento = $id_movimiento";
 		$res_sum = mysqli_query($conexion, $sql_sum);

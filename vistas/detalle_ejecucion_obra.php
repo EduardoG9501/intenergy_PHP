@@ -4,8 +4,8 @@ session_set_cookie_params(14400);
 session_start();
 require_once "../clases/Conexion.php";
 if(isset($_SESSION['usuario'])){
-	$id_ejecucion_obra = $_GET['id_ejecucion_obra'];
-	$id_estado_ejecucion_obra = $_GET['id_estado_ejecucion_obra'];
+	$id_ejecucion_obra = isset($_GET['id_ejecucion_obra']) ? $_GET['id_ejecucion_obra'] : null;
+	$id_estado_ejecucion_obra = isset($_GET['id_estado_ejecucion_obra']) ? $_GET['id_estado_ejecucion_obra'] : null;
 	$idorden = isset($_GET['idorden']) ? $_GET['idorden'] : null;
 ?>
 <!DOCTYPE html>
@@ -24,7 +24,7 @@ if(isset($_SESSION['usuario'])){
 <div class="container">
 	<button id="btnRegresar" class="btn btn-warning">&#8592; Regresar</button>
 	<label class="label-custom">ID Ejecución: <?php echo  $id_ejecucion_obra;  ?> </label>  
-	<label class="label-custom">ESTADO Ejecución: <?php if ($id_estado_ejecucion_obra === "1") { echo "EN PROCESO";} elseif ($id_estado_ejecucion_obra === "2") echo "FINALIZADA" ; ?> </label>  
+	<label class="label-custom">ESTADO Ejecución: <?php if ($id_estado_ejecucion_obra === "1") { echo "PENDIENTE";} elseif ($id_estado_ejecucion_obra === "2") echo "TERMINADO" ; ?> </label>  
 	<button type="button" class="btn btn-primary" id="exportDetalleExcel"><i class="fa fa-file-excel"></i> Exportar a Excel</button>
 	<button type="button" class="btn btn-danger" id="imprimirDetallePDF"><i class="fa fa-file-pdf"></i> Imprimir PDF</button>
 	<!-- Logo oculto para PDF -->
@@ -53,11 +53,9 @@ if(isset($_SESSION['usuario'])){
 					<div class="col-sm-5">
 						   <label style="margin-top: 5px;">ACCIONES:</label>
 						   <div>
-							   <?php if ($id_estado_ejecucion_obra === "1"){ ?>
-								   <button title="Agregar artículo" type="submit" id="btnGuardarDetalle" class="btn btn-info"><i class="glyphicon glyphicon-plus-sign"></i> AGREGAR</button>
-							   <?php } ?>
-							   <button title="Guardar todo" id="btnGuardarGeneral" class="btn btn-success" style="margin-left:8px;"><i class="glyphicon glyphicon-ok-sign"></i> GUARDAR</button>
+							   <button title="Agregar artículo" type="submit" id="btnGuardarDetalle" class="btn btn-info"><i class="glyphicon glyphicon-plus-sign"></i> AGREGAR</button>
 							   <button type="button" id="btnCancelarDetalle" class="btn btn-danger" style="display:none; margin-left:8px;">CANCELAR</button>
+							   <button title="Guardar todo" type="button" id="btnGuardarGeneral" class="btn btn-success" style="margin-left:8px;"><i class="glyphicon glyphicon-ok-sign"></i> GUARDAR</button>
 						   </div>
 					</div>
 				</div>
@@ -105,12 +103,16 @@ function verificarContabilizado() {
 	fetch(`../procesos/ejecucion_obra/proceso_ejecucion_obra.php?action=listar_detalle&id_ejecucion_obra=${id}`)
 		.then(resp => resp.json())
 		.then(data => {
-			contabilizado = data.some(det => det.Contabilizado == 1);
-			if (contabilizado) {
-				document.getElementById('formDetalle').querySelectorAll('input, select, button').forEach(el => {
-					if (el.id !== 'btnGuardarGeneral') el.disabled = true;
-				});
-			}
+				       contabilizado = data.some(det => det.Contabilizado == 1);
+					   if (contabilizado) {
+					       document.getElementById('formDetalle').querySelectorAll('input, select, button').forEach(el => {
+						       if (el.id !== 'btnGuardarGeneral') el.disabled = true;
+					       });
+				       } else {
+					       document.getElementById('formDetalle').querySelectorAll('input, select, button').forEach(el => {
+						       if (el.id !== 'btnGuardarGeneral') el.disabled = false;
+					       });
+				       }
 		});
 }
 document.addEventListener('DOMContentLoaded', () => {
@@ -150,44 +152,51 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 	
 	document.getElementById('btnGuardarGeneral').onclick = function(){
-		if (contabilizado) {
-			Swal.fire({
-				icon: 'info',
-				title: 'Ya contabilizado',
-				text: 'Los detalles ya han sido contabilizados y no se puede volver a guardar.'
-			});
-			return;
-		}
-		Swal.fire({
-			title: '¿Está seguro?',
-			text: 'Se generará el movimiento de salida y se contabilizarán los detalles. No podrá editar después.',
-			icon: 'warning',
-			showCancelButton: true,
-			confirmButtonText: 'Sí, contabilizar',
-			cancelButtonText: 'Cancelar'
-		}).then((result) => {
-			if (result.isConfirmed) {
-				fetch('../procesos/ejecucion_obra/proceso_ejecucion_obra.php', {
-					method: 'POST',
-					body: new URLSearchParams({
-						action: 'contabilizar',
-						id_ejecucion_obra: <?= $id_ejecucion_obra ?>
-					})
-				})
-				.then(resp => resp.json())
-				.then(r => {
-					if (r.success) {
-						Swal.fire({ icon: 'success', title: 'Contabilizado', text: r.mensaje });
-						contabilizado = true;
-						document.getElementById('formDetalle').querySelectorAll('input, select, button').forEach(el => {
-							if (el.id !== 'btnGuardarGeneral') el.disabled = true;
-						});
-					} else {
-						Swal.fire({ icon: 'error', title: 'Error', text: r.mensaje });
-					}
-				});
-			}
-		});
+		   if (contabilizado) {
+			   Swal.fire({
+				   icon: 'info',
+				   title: 'Ya contabilizado',
+				   text: 'Los detalles ya han sido contabilizados y no se puede volver a guardar.'
+			   });
+			   return;
+		   }
+		   Swal.fire({
+			   title: '¿Desea generar el movimiento de SALIDA/DESCARGO?',
+			   text: 'Esta acción contabilizará todos los detalles y no podrá editar ni agregar más ítems.',
+			   icon: 'question',
+			   showCancelButton: true,
+			   confirmButtonText: 'Sí, generar movimiento',
+			   cancelButtonText: 'No, cancelar'
+		   }).then((result) => {
+			   if (result.isConfirmed) {
+				   fetch('../procesos/ejecucion_obra/proceso_ejecucion_obra.php', {
+					   method: 'POST',
+					   body: new URLSearchParams({
+						   action: 'contabilizar',
+						   id_ejecucion_obra: <?= $id_ejecucion_obra ?>
+					   })
+				   })
+				   .then(resp => resp.json())
+				   .then(r => {
+					   if (r.success) {
+						   Swal.fire({
+							   icon: 'success',
+							   title: 'Movimiento generado',
+							   text: r.mensaje
+						   }).then(() => {
+							   window.location.href = 'ejecucionobra.php';
+						   });
+						   contabilizado = true;
+						   document.getElementById('formDetalle').querySelectorAll('input, select, button').forEach(el => {
+							   if (el.id !== 'btnGuardarGeneral') el.disabled = true;
+						   });
+					   } else {
+						   Swal.fire({ icon: 'error', title: 'Error', text: r.mensaje });
+					   }
+				   });
+			   }
+			   // Si cancela, no hacer nada
+		   });
 	};
 		 
 	const formDetalle = document.getElementById('formDetalle');
@@ -200,19 +209,20 @@ document.addEventListener('DOMContentLoaded', () => {
 			window.location.href = "ejecucionobra.php";
 		}
 	};
-	formDetalle.onsubmit = function(e) {
-				var cantidad = document.getElementById('cantidad').value;
-				if (cantidad === "" || isNaN(cantidad) || parseFloat(cantidad) <= 0) {
-					Swal.fire({
-						title: 'Cantidad inválida',
-						text: 'Debes ingresar una cantidad mayor a cero.',
-						icon: 'warning',
-						confirmButtonColor: '#7c3aed',
-						confirmButtonText: 'OK'
-					});
-					return false;
-				}
+	// Solo el botón AGREGAR debe validar y enviar el form
+	document.getElementById('btnGuardarDetalle').onclick = function(e) {
 		e.preventDefault();
+		var cantidad = document.getElementById('cantidad').value;
+		if (cantidad === "" || isNaN(cantidad) || parseFloat(cantidad) <= 0) {
+			Swal.fire({
+				title: 'Cantidad inválida',
+				text: 'Debes ingresar una cantidad mayor a cero.',
+				icon: 'warning',
+				confirmButtonColor: '#7c3aed',
+				confirmButtonText: 'OK'
+			});
+			return false;
+		}
 		var id_producto = document.getElementById('id_producto').value;
 		var id_bodega_lugar = document.getElementById('id_bodega_lugar').value;
 		if (id_producto === "A" || id_producto === "" || id_producto === null) {
@@ -422,29 +432,30 @@ function pintarGridDetalle(detalles) {
 	 }
 	 const tbody = document.querySelector('#gridDetalle tbody');
 	 tbody.innerHTML = '';
-	 detalles.forEach(det => {
-		 const tr = document.createElement('tr');
-		 let acciones = '';
-		 if (window.id_estado_ejecucion_obra === "1") {
-			 acciones = `
-				 <button class="btn btn-warning" onclick='editarDetalle(${JSON.stringify(det)})'><i class="glyphicon glyphicon-edit"></i></button>
-				 <button class="btn btn-danger" onclick='eliminarDetalle(${det.id_ejecucion_obra_detalle_materiales_utilizar})'><i class="glyphicon glyphicon-trash"></i></button>
-			 `;
-		 } else {
-			 acciones = `
-				 <button disabled class="btn btn-warning" onclick='editarDetalle(${JSON.stringify(det)})'><i class="glyphicon glyphicon-edit"></i></button>
-				 <button disabled class="btn btn-danger" onclick='eliminarDetalle(${det.id_ejecucion_obra_detalle_materiales_utilizar})'><i class="glyphicon glyphicon-trash"></i></button>
-			 `;
-		 }
-		 tr.innerHTML = `
-			 <td>${det.id_ejecucion_obra_detalle_materiales_utilizar}</td>
-			 <td>${det.articulo_nombre}</td>
-			 <td>${det.nombreBodega ? det.nombreBodega : (det.bodega_nombre ? det.bodega_nombre : (det.ubicacion_nombre ? det.ubicacion_nombre : det.id_bodega_lugar))}</td>
-			 <td>${det.cantidad}</td>
-			 <td>${acciones}</td>
-		 `;
-		 tbody.appendChild(tr);
-	 });
+		detalles.forEach(det => {
+			const tr = document.createElement('tr');
+			let acciones = ''; 
+			// Solo deshabilitar si es exactamente '1' o 1
+			if (String(det.Contabilizado).trim() === "1") {
+				acciones = `
+					<button disabled class=\"btn btn-warning\" onclick='editarDetalle(${JSON.stringify(det)})'><i class=\"glyphicon glyphicon-edit\"></i></button>
+					<button disabled class=\"btn btn-danger\" onclick='eliminarDetalle(${det.id_ejecucion_obra_detalle_materiales_utilizar})'><i class=\"glyphicon glyphicon-trash\"></i></button>
+				`;
+			} else {
+				acciones = `
+					<button class=\"btn btn-warning\" onclick='editarDetalle(${JSON.stringify(det)})'><i class=\"glyphicon glyphicon-edit\"></i></button>
+					<button class=\"btn btn-danger\" onclick='eliminarDetalle(${det.id_ejecucion_obra_detalle_materiales_utilizar})'><i class=\"glyphicon glyphicon-trash\"></i></button>
+				`;
+			}
+			tr.innerHTML = `
+				<td>${det.id_ejecucion_obra_detalle_materiales_utilizar}</td>
+				<td>${det.articulo_nombre}</td>
+				<td>${det.nombreBodega ? det.nombreBodega : (det.bodega_nombre ? det.bodega_nombre : (det.ubicacion_nombre ? det.ubicacion_nombre : det.id_bodega_lugar))}</td>
+				<td>${det.cantidad}</td>
+				<td>${acciones}</td>
+			`;
+			tbody.appendChild(tr);
+		});
 	 $('#gridDetalle').DataTable({
 		 responsive: true,
 		 destroy: true,
@@ -463,24 +474,25 @@ function obtenerDatosDeTablaDetalle(tablaId) {
 	const resultados = [];
 	const table = $('#' + tablaId).DataTable();
 	const allData = table.rows({search:'applied'}).data().toArray();
-	allData.forEach(row => {
-		resultados.push({
-			campo1: row[0], // ID
-			campo2: row[1], // Articulo
-			campo3: row[2]  // Cantidad
-		});
-	});
+	       allData.forEach(row => {
+		       resultados.push({
+			       campo1: row[0], // ID
+			       campo2: row[1], // Articulo
+			       campo3: row[2], // Ubicacion
+			       campo4: row[3]  // Cantidad
+		       });
+	       });
 	return resultados;
 }
 function exportarDetalleEjecucionAExcelConFormato() {
 	var dt = $('#gridDetalle').DataTable();
 	var data = dt.rows({search:'applied'}).data().toArray();
-	let header = ['ID', 'ARTICULO', 'CANTIDAD'];
+	let header = ['ID', 'ARTICULO', 'UBICACION', 'CANTIDAD'];
 	var bodyRows = [];
-	data.forEach(row => { bodyRows.push([row[0], row[1], row[2]]); });
+	data.forEach(row => { bodyRows.push([row[0], row[1], row[2], row[3]]); });
 	let totalCantidad = 0;
-	bodyRows.forEach(r => { totalCantidad += parseFloat(r[2]) || 0; });
-	let footRow = ["", "TOTAL:", totalCantidad.toFixed(2)];
+	bodyRows.forEach(r => { totalCantidad += parseFloat(r[3]) || 0; });
+	let footRow = ["", "", "TOTAL:", totalCantidad.toFixed(2)];
 	var workbook = new ExcelJS.Workbook();
 	var worksheet = workbook.addWorksheet('Detalle Ejecución');
 	let headerRow = worksheet.addRow(header);
@@ -524,23 +536,24 @@ function exportarTablaDetalleAPDF(resultados) {
 	doc.text("DETALLE DE EJECUCIÓN DE OBRA", pageWidth / 2, 40, { align: "center" });
 	doc.setFontSize(12);
 	let totalCantidad = 0;
-	resultados.forEach(r => { totalCantidad += parseFloat(r.campo3) || 0; });
-	const totalRow = { campo1: "", campo2: "TOTAL:", campo3: totalCantidad.toFixed(2) };
-	const columns = [
-		{ header: 'ID', dataKey: 'campo1' },
-		{ header: 'ARTICULO', dataKey: 'campo2' },
-		{ header: 'CANTIDAD', dataKey: 'campo3' }
-	];
-	doc.autoTable({
-		columns: columns,
-		body: resultados,
-		foot: [totalRow],
-		startY: 110,
-		styles: { fontSize: 10, cellPadding: 5 },
-		headStyles: { fillColor: [41, 134, 197], textColor: [255,255,255], fontStyle: 'bold' },
-		footStyles: { fillColor: [41, 134, 197], textColor: [255,255,255], fontStyle: 'bold' },
-		margin: { left: 40, right: 40 }
-	});
+	       resultados.forEach(r => { totalCantidad += parseFloat(r.campo4) || 0; });
+	       const totalRow = { campo1: "", campo2: "", campo3: "TOTAL:", campo4: totalCantidad.toFixed(2) };
+	       const columns = [
+		       { header: 'ID', dataKey: 'campo1' },
+		       { header: 'ARTICULO', dataKey: 'campo2' },
+		       { header: 'UBICACION', dataKey: 'campo3' },
+		       { header: 'CANTIDAD', dataKey: 'campo4' }
+	       ];
+	       doc.autoTable({
+		       columns: columns,
+		       body: resultados,
+		       foot: [totalRow],
+		       startY: 110,
+		       styles: { fontSize: 10, cellPadding: 5 },
+		       headStyles: { fillColor: [41, 134, 197], textColor: [255,255,255], fontStyle: 'bold' },
+		       footStyles: { fillColor: [41, 134, 197], textColor: [255,255,255], fontStyle: 'bold' },
+		       margin: { left: 40, right: 40 }
+	       });
 	const fecha = new Date().toLocaleString();
 	doc.setFontSize(10);
 	doc.setTextColor(127, 140, 141);
