@@ -78,18 +78,15 @@
 			$total_mto = $row_sum ? floatval($row_sum['total_mto']) : 0;
 			$sql_update_mov = "UPDATE movimientos SET subtotal_mto = $subtotal_mto, total_mto = $total_mto WHERE id_movimiento = $id_movimiento";
 			mysqli_query($conexion, $sql_update_mov);
-			// Insertar en stock_productos
-			$fecha = date('Y-m-d');
-			$sql2 = "INSERT into stock_productos (id_movimiento, id_tipo_movimiento, id_sub_tipo_movimiento, no_documento, id_bodega_principal, id_bodega_secundaria, tipo_movimiento, sub_tipo_movimiento, id_movimiento_detalle, id_producto, producto, lote, precio, cantidad, subtotal, decuento, iva, total, stock, id_stock_credito, id_usuario, fecha_captura) SELECT DISTINCT det.id_movimiento, mov.id_tipo_movimiento, mov.id_sub_tipo_movimiento, mov.no_documento, mov.id_bodega idBodegaPrincipal, det.id_bodega_lugar IdBodegaSecundaria, tm.tipo TipoMovimiento, stm.sub_tipo SubTipoMovimiento, det.id_movimiento_detalle, art.id_producto, art.nombre, det.lote, det.precio, det.cantidad, det.subtotal, det.decuento, det.iva, det.total, det.cantidad stock, 0 id_stock_credito, mov.id_usuario, '$fecha' fecha_captura from movimientos_detalle as det inner join movimientos mov on det.id_movimiento = mov.id_movimiento inner join tipo_movimiento tm on mov.id_tipo_movimiento = tm.id_tipo_movimiento inner join sub_tipo_movimiento stm on mov.id_sub_tipo_movimiento = stm.id_sub_tipo_movimiento inner join articulos art on det.id_articulo= art.id_producto inner join bodegas bod on  det.id_bodega_lugar= bod.id_bodega where det.id_movimiento='$id_movimiento'";
-			mysqli_query($conexion,$sql2);
+			   // Insertar en stock_productos
+			   $fecha = date('Y-m-d');
+			   $sql2 = "INSERT into stock_productos (id_movimiento, id_tipo_movimiento, id_sub_tipo_movimiento, no_documento, id_bodega_principal, id_bodega_secundaria, tipo_movimiento, sub_tipo_movimiento, id_movimiento_detalle, id_producto, producto, lote, precio, cantidad, subtotal, decuento, iva, total, stock, id_stock_credito, id_usuario, fecha_captura) SELECT DISTINCT det.id_movimiento, mov.id_tipo_movimiento, mov.id_sub_tipo_movimiento, mov.no_documento, mov.id_bodega idBodegaPrincipal, det.id_bodega_lugar IdBodegaSecundaria, tm.tipo TipoMovimiento, stm.sub_tipo SubTipoMovimiento, det.id_movimiento_detalle, art.id_producto, art.nombre, det.lote, det.precio, det.cantidad, det.subtotal, det.decuento, det.iva, det.total, det.cantidad stock, 0 id_stock_credito, mov.id_usuario, '$fecha' fecha_captura from movimientos_detalle as det inner join movimientos mov on det.id_movimiento = mov.id_movimiento inner join tipo_movimiento tm on mov.id_tipo_movimiento = tm.id_tipo_movimiento inner join sub_tipo_movimiento stm on mov.id_sub_tipo_movimiento = stm.id_sub_tipo_movimiento inner join articulos art on det.id_articulo= art.id_producto inner join bodegas bod on  det.id_bodega_lugar= bod.id_bodega where det.id_movimiento='$id_movimiento'";
+			   mysqli_query($conexion,$sql2);
 			// Actualizar stock de articulos
 			$sql10 = "CALL actualizar_cantidad_articulos_por_movimiento($id_movimiento)";
 			mysqli_query($conexion, $sql10);
 		}
-		// 6. Insertar en stock_productos
-		$fecha = date('Y-m-d');
-		$sql2 = "INSERT into stock_productos (id_movimiento, id_tipo_movimiento, id_sub_tipo_movimiento, no_documento, id_bodega_principal, id_bodega_secundaria, tipo_movimiento, sub_tipo_movimiento, id_movimiento_detalle, id_producto, producto, lote, precio, cantidad, subtotal, decuento, iva, total, stock, id_stock_credito, id_usuario, fecha_captura) SELECT DISTINCT det.id_movimiento, mov.id_tipo_movimiento, mov.id_sub_tipo_movimiento, mov.no_documento, mov.id_bodega idBodegaPrincipal, det.id_bodega_lugar IdBodegaSecundaria, tm.tipo TipoMovimiento, stm.sub_tipo SubTipoMovimiento, det.id_movimiento_detalle, art.id_producto, art.nombre, det.lote, det.precio, det.cantidad, det.subtotal, det.decuento, det.iva, det.total, det.cantidad stock, 0 id_stock_credito, mov.id_usuario, '$fecha' fecha_captura from movimientos_detalle as det inner join movimientos mov on det.id_movimiento = mov.id_movimiento inner join tipo_movimiento tm on mov.id_tipo_movimiento = tm.id_tipo_movimiento inner join sub_tipo_movimiento stm on mov.id_sub_tipo_movimiento = stm.id_sub_tipo_movimiento inner join articulos art on det.id_articulo= art.id_producto inner join bodegas bod on  det.id_bodega_lugar= bod.id_bodega where det.id_movimiento='$id_movimiento'";
-		$resultadoStock =  mysqli_query($conexion,$sql2);
+		// ...eliminado para evitar duplicidad...
 		// 7. Actualizar totales del movimiento
 		$sql_sum = "SELECT SUM(subtotal) AS subtotal_mto, SUM(total) AS total_mto FROM movimientos_detalle WHERE id_movimiento = $id_movimiento";
 		$res_sum = mysqli_query($conexion, $sql_sum);
