@@ -132,6 +132,15 @@ function mostrarFormulario(ejecucion = null) {
 		});
 		divEstado.style.display = 'block';
 		cargarEstadosEjecucion(ejecucion.id_estado_ejecucion_obra);
+		// Desactivar botón GUARDAR si estado TERMINADO (id_estado_ejecucion_obra == 2)
+		setTimeout(function() {
+			var btnGuardar = document.getElementById('btnGuardar');
+			if (String(ejecucion.id_estado_ejecucion_obra) === '2') {
+				btnGuardar.disabled = true;
+			} else {
+				btnGuardar.disabled = false;
+			}
+		}, 300);
 	} else {
 		formModalLabel.textContent = 'Agregar Ejecución de Obra';
 		document.getElementById('formEjecucionObra').reset();
@@ -224,8 +233,8 @@ function pintarGridEjecucion(ejecuciones) {
 			<td>
 				<button class="btn btn-warning" onclick="editarEjecucion(${ejecucion.id_ejecucion_obra})"><i class="glyphicon glyphicon-edit"></i></button>
 				<a class="btn btn-info" href="detalle_ejecucion_obra.php?id_ejecucion_obra=${ejecucion.id_ejecucion_obra}&id_estado_ejecucion_obra=${ejecucion.id_estado_ejecucion_obra}${idOrdenParam}">MATERIALES</a>
-				<a class="btn btn-primary" href="detalle_ejecucion_obra.php?id_ejecucion_obra=${ejecucion.id_ejecucion_obra}&id_estado_ejecucion_obra=${ejecucion.id_estado_ejecucion_obra}${idOrdenParam}">HORA T.</a>
-				<a class="btn btn-success" href="detalle_ejecucion_obra.php?id_ejecucion_obra=${ejecucion.id_ejecucion_obra}&id_estado_ejecucion_obra=${ejecucion.id_estado_ejecucion_obra}${idOrdenParam}">INFORME D.</a>
+				<a class="btn btn-primary" href="detalle_ejecucion_obra.php?id_ejecucion_obra=${ejecucion.id_ejecucion_obra}&id_estado_ejecucion_obra=${ejecucion.id_estado_ejecucion_obra}${idOrdenParam}">H.TRABAJO</a>
+				<a class="btn btn-success" href="detalle_ejecucion_obra.php?id_ejecucion_obra=${ejecucion.id_ejecucion_obra}&id_estado_ejecucion_obra=${ejecucion.id_estado_ejecucion_obra}${idOrdenParam}">INF.DIARIO</a>
 			</td>
 		`;
 		tbody.appendChild(tr);
