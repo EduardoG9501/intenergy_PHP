@@ -738,6 +738,20 @@ CREATE TABLE ejecucion_obra_detalle_materiales_utilizar (
     FOREIGN KEY (id_producto) REFERENCES articulos(id_producto)
 );
 
+CREATE TABLE horas_trabajo_diario_detalle (
+    id_horas_trabajo_diario_detalle INT AUTO_INCREMENT PRIMARY KEY,
+    id_ejecucion_obra INT NOT NULL,
+    id_empleado INT NOT NULL,
+    hora_entrada TIME NOT NULL,
+    hora_salida TIME NOT NULL,
+    cantidad_horas_normal DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+    cantidad_horas_extra DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+    cantidad_horas_extraordinaria DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+    fecha_registro DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_ejecucion_obra) REFERENCES ejecucion_obra(id_ejecucion_obra),
+    FOREIGN KEY (id_empleado) REFERENCES empleados(id_empleados)
+);
+
 DELIMITER //
 CREATE TRIGGER actualizar_stock_bodega AFTER INSERT ON stock_productos
 FOR EACH ROW

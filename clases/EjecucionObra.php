@@ -265,4 +265,99 @@
 		}
 		return $datos;
 	}
+	// --- HORAS DE TRABAJO DIARIO ---
+	// Listar horas de trabajo diario por ejecución de obra
+	public function listarHorasTrabajoDiario($id_ejecucion_obra) {
+		$c = new conectar();
+		$conexion = $c->conexion();
+		$sql = "SELECT htd.*, e.nombres_apellidos FROM horas_trabajo_diario_detalle htd
+				INNER JOIN empleados e ON htd.id_empleado = e.id_empleados
+				WHERE htd.id_ejecucion_obra = $id_ejecucion_obra ORDER BY htd.hora_entrada ASC";
+		$result = mysqli_query($conexion, $sql);
+		$datos = [];
+		while ($fila = mysqli_fetch_assoc($result)) {
+			$datos[] = $fila;
+		}
+		return $datos;
+	}
+
+	// Agregar registro de horas de trabajo diario
+	public function agregarHorasTrabajoDiario($id_ejecucion_obra, $id_empleado, $hora_entrada, $hora_salida, $feriado, $fecha_solicitud) {
+		$c = new conectar();
+		$conexion = $c->conexion();
+		$result = $this->calcularHorasTrabajo($hora_entrada, $hora_salida, $feriado, $fecha_solicitud);
+		$sql = "INSERT INTO horas_trabajo_diario_detalle
+				(id_ejecucion_obra, id_empleado, hora_entrada, hora_salida, cantidad_horas_normal, cantidad_horas_extra, cantidad_horas_extraordinaria)
+				VALUES (?, ?, ?, ?, ?, ?, ?)";
+		$stmt = mysqli_prepare($conexion, $sql);
+		mysqli_stmt_bind_param($stmt, 'iissddd', $id_ejecucion_obra, $id_empleado, $hora_entrada, $hora_salida, $result['horas_normales'], $result['horas_extras'], $result['horas_extraordinarias']);
+		$ok = mysqli_stmt_execute($stmt);
+		return $ok;
+	}
+
+	// Editar registro de horas de trabajo diario
+	public function editarHorasTrabajoDiario($id, $hora_entrada, $hora_salida, $feriado, $fecha_solicitud, $id_empleado = null) {
+		$c = new conectar();
+		$conexion = $c->conexion();
+		$result = $this->calcularHorasTrabajo($hora_entrada, $hora_salida, $feriado, $fecha_solicitud);
+		if ($id_empleado !== null) {
+			$sql = "UPDATE horas_trabajo_diario_detalle SET id_empleado=?, hora_entrada=?, hora_salida=?, cantidad_horas_normal=?, cantidad_horas_extra=?, cantidad_horas_extraordinaria=? WHERE id_horas_trabajo_diario_detalle=?";
+			$stmt = mysqli_prepare($conexion, $sql);
+			mysqli_stmt_bind_param($stmt, 'issdddi', $id_empleado, $hora_entrada, $hora_salida, $result['horas_normales'], $result['horas_extras'], $result['horas_extraordinarias'], $id);
+		} else {
+			$sql = "UPDATE horas_trabajo_diario_detalle SET hora_entrada=?, hora_salida=?, cantidad_horas_normal=?, cantidad_horas_extra=?, cantidad_horas_extraordinaria=? WHERE id_horas_trabajo_diario_detalle=?";
+			$stmt = mysqli_prepare($conexion, $sql);
+			mysqli_stmt_bind_param($stmt, 'ssdddi', $hora_entrada, $hora_salida, $result['horas_normales'], $result['horas_extras'], $result['horas_extraordinarias'], $id);
+		}
+		$ok = mysqli_stmt_execute($stmt);
+		return $ok;
+	}
+
+	// Eliminar registro de horas de trabajo diario (físico)
+	public function eliminarHorasTrabajoDiario($id) {
+		$c = new conectar();
+		$conexion = $c->conexion();
+		$sql = "DELETE FROM horas_trabajo_diario_detalle WHERE id_horas_trabajo_diario_detalle = ?";
+		$stmt = mysqli_prepare($conexion, $sql);
+		mysqli_stmt_bind_param($stmt, 'i', $id);
+		$ok = mysqli_stmt_execute($stmt);
+		return $ok;
+	}
+
+	// Cálculo automático de horas normales, extras y extraordinarias
+	private function calcularHorasTrabajo($hora_entrada, $hora_salida, $feriado, $fecha_solicitud) {
+		$entrada = strtotime($hora_entrada);
+		$salida = strtotime($hora_salida);
+		$total_horas = round((($salida - $entrada) / 3600), 2);
+		if ($total_horas < 0) $total_horas += 24; // por si cruza medianoche
+
+		$dia_semana = date('N', strtotime($fecha_solicitud)); // 1=lunes, 7=domingo
+		$horas_normales = 0;
+		$horas_extras = 0;
+		$horas_extraordinarias = 0;
+
+		if ($feriado == 1 || $dia_semana == 7) {
+			// Todo es extraordinario
+			$horas_extraordinarias = $total_horas;
+		} elseif ($dia_semana == 6) {
+			// Sábado: todo es extra
+			$horas_extras = $total_horas;
+		} else {
+			// Lunes a viernes
+			if ($total_horas <= 9) {
+				$horas_normales = $total_horas;
+			} else {
+				$horas_normales = 9;
+				$horas_extras = $total_horas - 9;
+			}
+		}
+		return [
+			'horas_normales' => $horas_normales,
+			'horas_extras' => $horas_extras,
+			'horas_extraordinarias' => $horas_extraordinarias
+		];
+	}
+		public function getEjecucionObra($id) {
+		return $this->obtener($id);
+	}
 }

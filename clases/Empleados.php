@@ -127,6 +127,19 @@
 			$sql="UPDATE empleados SET estado = 1 where id_empleados ='$idempleado'";
 			return mysqli_query($conexion,$sql);
 		}
+
+	// Listar empleados activos (id_empleados, nombres_apellidos)
+	public function listar() {
+		$c= new conectar();
+	    $conexion=$c->conexion();
+		$sql = "SELECT id_empleados, nombres_apellidos FROM empleados WHERE estado = 1 ORDER BY nombres_apellidos ASC";
+		$result = mysqli_query($conexion, $sql);
+		$datos = array();
+		while ($fila = mysqli_fetch_assoc($result)) {
+			$datos[] = $fila;
+		}
+		return $datos;
+	}
 	}
 
  ?>
