@@ -15,6 +15,15 @@ switch ($accion) {
                 echo json_encode(['success' => false]);
             }
             break;
+        case 'getFecha':
+            $id_ejecucion_obra = intval($_GET['id_ejecucion_obra'] ?? 0);
+            $row = $ejecucionObra->getEjecucionObra($id_ejecucion_obra);
+            if ($row && isset($row['fecha_solicitud'])) {
+                echo json_encode(['success' => true, 'fecha_solicitud' => $row['fecha_solicitud']]);
+            } else {
+                echo json_encode(['success' => false]);
+            }
+            break;
     case 'listar':
         $id_ejecucion_obra = intval($_GET['id_ejecucion_obra'] ?? 0);
         $data = $ejecucionObra->listarHorasTrabajoDiario($id_ejecucion_obra);
@@ -26,7 +35,13 @@ switch ($accion) {
         $hora_entrada = $_POST['hora_entrada'];
         $hora_salida = $_POST['hora_salida'];
         $feriado = intval($_POST['feriado']);
-        $ok = $ejecucionObra->agregarHorasTrabajoDiario($id_ejecucion_obra, $id_empleado, $hora_entrada, $hora_salida, $feriado, null);
+        $fecha_solicitud = $_POST['fecha_solicitud'] ?? null;
+        if (empty($fecha_solicitud)) {
+            // Obtener la fecha de la ejecución de obra si no viene del frontend
+            $row = $ejecucionObra->getEjecucionObra($id_ejecucion_obra);
+            $fecha_solicitud = $row && isset($row['fecha_solicitud']) ? $row['fecha_solicitud'] : date('Y-m-d');
+        }
+        $ok = $ejecucionObra->agregarHorasTrabajoDiario($id_ejecucion_obra, $id_empleado, $hora_entrada, $hora_salida, $feriado, $fecha_solicitud);
         echo json_encode(['success' => $ok]);
         break;
     case 'editar':
@@ -35,7 +50,13 @@ switch ($accion) {
         $hora_salida = $_POST['hora_salida'];
         $feriado = intval($_POST['feriado']);
         $id_empleado = isset($_POST['id_empleado']) ? intval($_POST['id_empleado']) : null;
-        $ok = $ejecucionObra->editarHorasTrabajoDiario($id, $hora_entrada, $hora_salida, $feriado, null, $id_empleado);
+        $fecha_solicitud = $_POST['fecha_solicitud'] ?? null;
+        if (empty($fecha_solicitud) && isset($_POST['id_ejecucion_obra'])) {
+            $id_ejecucion_obra = intval($_POST['id_ejecucion_obra']);
+            $row = $ejecucionObra->getEjecucionObra($id_ejecucion_obra);
+            $fecha_solicitud = $row && isset($row['fecha_solicitud']) ? $row['fecha_solicitud'] : date('Y-m-d');
+        }
+        $ok = $ejecucionObra->editarHorasTrabajoDiario($id, $hora_entrada, $hora_salida, $feriado, $fecha_solicitud, $id_empleado);
         echo json_encode(['success' => $ok]);
         break;
     case 'eliminar':

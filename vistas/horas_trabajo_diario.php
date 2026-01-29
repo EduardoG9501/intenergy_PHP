@@ -24,7 +24,15 @@ if (!isset($_SESSION['usuario'])) { header('location:../index.php'); exit(); }
 </head>
 <body>
 <div class="container">
-    <button id="btnRegresar" class="btn btn-warning" onclick="window.history.back()">&larr; Regresar</button>
+    <div style="display:flex; align-items:center; gap:20px; margin-bottom:10px;">
+        <button id="btnRegresar" class="btn btn-warning" onclick="window.history.back()">&larr; Regresar</button>
+        <div style="display:flex; align-items:center; gap:16px;">
+            <label style="font-weight:bold; margin-bottom:0;">Fecha:</label>
+            <span id="fecha_ejecucion_obra" style="font-weight:bold; color:#1976d2; font-size:16px;"></span>
+            <label style="font-weight:bold; margin-bottom:0; margin-left:18px;">Feriado:</label>
+            <span id="feriado_ejecucion_obra" style="font-weight:bold; color:#1976d2; font-size:16px;"></span>
+        </div>
+    </div>
     <h2>HORAS DE TRABAJO</h2>
     <button id="btnAgregarHTD" class="btn btn-primary"><i class="glyphicon glyphicon-plus"></i> NUEVO</button>
     <button id="btnExportExcelHTD" class="btn btn-success"><i class="glyphicon glyphicon-download"></i> Excel</button>
@@ -86,9 +94,16 @@ if (!isset($_SESSION['usuario'])) { header('location:../index.php'); exit(); }
                 <input type="hidden" id="id_horas_trabajo_diario_detalle" name="id_horas_trabajo_diario_detalle">
                 <input type="hidden" id="id_ejecucion_obra" name="id_ejecucion_obra">
                 <div class="row" style="margin-bottom:10px;">
-                    <div class="col-sm-12" style="display:flex; flex-direction:column; align-items:center;">
-                        <label style="font-weight:bold;">Empleado:</label>
-                        <select id="id_empleado" name="id_empleado" required style="width:100%;"></select>
+                    <div class="col-sm-12" style="display:flex; flex-direction:row; align-items:center; justify-content:space-between;">
+                        <div style="display:flex; flex-direction:column; align-items:flex-start; width:20%; min-width:110px;">
+                            <label style="font-weight:bold;">Fecha:</label>
+                            <span id="fecha_ejecucion_obra_modal" style="font-weight:bold; color:#1976d2; font-size:16px;"></span>
+                            <input type="hidden" id="fecha_solicitud" name="fecha_solicitud">
+                        </div>
+                        <div style="display:flex; flex-direction:column; align-items:flex-start; width:80%;">
+                            <label style="font-weight:bold; text-align:left; width:100%;">Empleado:</label>
+                            <select id="id_empleado" name="id_empleado" required style="width:100%; min-width:200px;"></select>
+                        </div>
                     </div>
                 </div>
                 <div class="row" style="margin-bottom:10px;">
@@ -136,6 +151,34 @@ if (!isset($_SESSION['usuario'])) { header('location:../index.php'); exit(); }
     </div>
 </div>
 <script type="text/javascript" src="../js/horas_trabajo_diario.js"></script>
+<script>
+// Sincronizar la fecha en el modal con la fecha global
+$(document).ready(function() {
+    function syncFechaModal() {
+        var fecha = $('#fecha_ejecucion_obra').text();
+        $('#fecha_ejecucion_obra_modal').text(fecha);
+    }
+    // Al abrir el modal, sincronizar la fecha
+    $('#btnAgregarHTD').on('click', syncFechaModal);
+    // También al cargar por si acaso
+    syncFechaModal();
+});
+</script>
+<script>
+// Sincronizar el valor de feriado en la cabecera
+$(document).ready(function() {
+    var id_ejecucion_obra = getParameterByName('id_ejecucion_obra') || '';
+    if (id_ejecucion_obra) {
+        $.get('../procesos/ejecucion_obra/horasTrabajoDiario.php', {accion: 'getFeriado', id_ejecucion_obra: id_ejecucion_obra}, function(resp) {
+            var r = JSON.parse(resp);
+            if (r.success) {
+                var feriadoTxt = (r.feriado == 1) ? 'Sí' : 'No';
+                $('#feriado_ejecucion_obra').text(feriadoTxt);
+            }
+        });
+    }
+});
+</script>
 </body>
 </html>
 <style>

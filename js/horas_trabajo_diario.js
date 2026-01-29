@@ -1,14 +1,11 @@
 // js/horas_trabajo_diario.js
 $(document).ready(function() {
-        // Cálculo automático de horas al cambiar hora entrada/salida
+        // Cálculo automático de horas al cambiar hora entrada/salida (idéntico a backend PHP)
         function calcularHorasHTD() {
             var entrada = $('#hora_entrada').val();
             var salida = $('#hora_salida').val();
             var feriado = $('#feriadoHTD').val();
-            var fecha = new Date().toISOString().slice(0,10); // fallback si no hay campo fecha
-            if ($('#fecha_solicitud').length) {
-                fecha = $('#fecha_solicitud').val() || fecha;
-            }
+            var fecha = $('#fecha_solicitud').val() || new Date().toISOString().slice(0,10);
             if (!entrada || !salida) {
                 $('#cantidad_horas_normal').val(0);
                 $('#cantidad_horas_extra').val(0);
@@ -20,26 +17,33 @@ $(document).ready(function() {
             var t1 = parseInt(h1[0],10) + parseInt(h1[1],10)/60;
             var t2 = parseInt(h2[0],10) + parseInt(h2[1],10)/60;
             var diff = t2 - t1;
-            if (diff < 0) diff += 24;
-            // Restar 1h de almuerzo si la jornada es mayor a 5h
-            if (diff > 5) diff -= 1;
-            var normales = 0, extra = 0, extraordinaria = 0;
-            var diaSemana = (new Date(fecha)).getDay(); // 0=domingo, 6=sabado
+            if (diff < 0) diff += 24; // por si cruza medianoche
+
+            // Interpretar fecha como local (no UTC)
+            // fecha: 'YYYY-MM-DD' => new Date(YYYY, MM-1, DD)
+            var partesFecha = fecha.split('-');
+            var fechaLocal = new Date(parseInt(partesFecha[0],10), parseInt(partesFecha[1],10)-1, parseInt(partesFecha[2],10));
+            var diaSemana = fechaLocal.getDay(); // 0=domingo, 6=sábado
+            var horas_normales = 0, horas_extras = 0, horas_extraordinarias = 0;
+
             if (feriado == '1' || diaSemana == 0) {
-                extraordinaria = diff > 0 ? diff : 0;
+                // Todo es extraordinario (domingo o feriado)
+                horas_extraordinarias = diff > 0 ? diff : 0;
             } else if (diaSemana == 6) {
-                extra = diff > 0 ? diff : 0;
+                // Sábado: todo es extra
+                horas_extras = diff > 0 ? diff : 0;
             } else {
-                if (diff <= 8) {
-                    normales = diff > 0 ? diff : 0;
+                // Lunes a viernes
+                if (diff <= 9) {
+                    horas_normales = diff > 0 ? diff : 0;
                 } else {
-                    normales = 8;
-                    extra = diff - 8;
+                    horas_normales = 9;
+                    horas_extras = diff - 9;
                 }
             }
-            $('#cantidad_horas_normal').val(normales.toFixed(2));
-            $('#cantidad_horas_extra').val(extra.toFixed(2));
-            $('#cantidad_horas_extraordinaria').val(extraordinaria.toFixed(2));
+            $('#cantidad_horas_normal').val(horas_normales.toFixed(2));
+            $('#cantidad_horas_extra').val(horas_extras.toFixed(2));
+            $('#cantidad_horas_extraordinaria').val(horas_extraordinarias.toFixed(2));
         }
 
         $('#hora_entrada, #hora_salida, #feriadoHTD').on('change', calcularHorasHTD);
@@ -48,18 +52,48 @@ $(document).ready(function() {
             $('#cantidad_horas_normal').val(0);
             $('#cantidad_horas_extra').val(0);
             $('#cantidad_horas_extraordinaria').val(0);
+            setTimeout(calcularHorasHTD, 200); // Forzar cálculo al abrir modal
         });
         // Al editar, recalcular si cambian horas
         $('#hora_entrada, #hora_salida, #feriadoHTD').on('change', calcularHorasHTD);
     var id_ejecucion_obra = getParameterByName('id_ejecucion_obra') || '';
     // Al cargar el formulario, obtener el valor de feriado de ejecucion_obra
     if (id_ejecucion_obra) {
+        // Obtener feriado y fecha de la ejecución de obra
         $.get('../procesos/ejecucion_obra/horasTrabajoDiario.php', {accion: 'getFeriado', id_ejecucion_obra: id_ejecucion_obra}, function(resp) {
             var r = JSON.parse(resp);
             if (r.success) {
                 var feriado = r.feriado == 1 ? '1' : '0';
                 $('#feriadoHTD').val(feriado);
                 $('#feriadoHTD_hidden').val(feriado);
+            }
+        });
+        // Obtener la fecha de la ejecución de obra
+        $.get('../procesos/ejecucion_obra/horasTrabajoDiario.php', {accion: 'listar', id_ejecucion_obra: id_ejecucion_obra}, function(resp) {
+            // La fecha se puede obtener del primer registro o de la ejecución de obra
+            // Mejor pedirla por AJAX a un endpoint dedicado, pero aquí la obtenemos del primer registro si existe
+            var fecha = '';
+            try {
+                var r = JSON.parse(resp);
+                if (r.success && r.data && r.data.length > 0 && r.data[0].fecha_solicitud) {
+                    fecha = r.data[0].fecha_solicitud;
+                }
+            } catch(e) {}
+            if (!fecha) {
+                // Si no hay registros, pedir la fecha de la ejecución de obra
+                $.get('../procesos/ejecucion_obra/horasTrabajoDiario.php', {accion: 'getFecha', id_ejecucion_obra: id_ejecucion_obra}, function(resp2) {
+                    var r2 = JSON.parse(resp2);
+                    if (r2.success && r2.fecha_solicitud) {
+                        fecha = r2.fecha_solicitud;
+                        $('#fecha_ejecucion_obra').text(fecha);
+                        $('#fecha_solicitud').val(fecha);
+                        calcularHorasHTD();
+                    }
+                });
+            } else {
+                $('#fecha_ejecucion_obra').text(fecha);
+                $('#fecha_solicitud').val(fecha);
+                calcularHorasHTD();
             }
         });
     }
@@ -82,8 +116,7 @@ $(document).ready(function() {
         // Asegurar que el id_ejecucion_obra esté correcto en el hidden
         var id_ejecucion_obra_url = getParameterByName('id_ejecucion_obra') || '';
         $('#id_ejecucion_obra').val(id_ejecucion_obra_url);
-        // Eliminar el campo fecha_solicitud si existe
-        $(this).find('[name="fecha_solicitud"]').remove();
+        // NO eliminar el campo fecha_solicitud, para que el backend reciba la fecha correcta
         var datos = $(this).serialize();
         var id = $('#id_horas_trabajo_diario_detalle').val();
         var accion = id ? 'editar' : 'agregar';
@@ -112,8 +145,9 @@ $(document).ready(function() {
             }
         });
     });
-    $('#btnExportExcelHTD').click(exportarExcelHTD);
-    $('#btnExportPDFHTD').click(exportarPDFHTD);
+    // Eliminar doble binding de eventos para evitar doble descarga
+    $('#btnExportExcelHTD').off('click').on('click', exportarExcelHTD);
+    $('#btnExportPDFHTD').off('click').on('click', exportarPDFHTD);
 
     function cargarGrid() {
         // Destruir DataTable antes de recargar datos para evitar errores de reinicialización
@@ -195,6 +229,12 @@ $(document).ready(function() {
                     });
                     $('#hora_entrada').val(row.hora_entrada);
                     $('#hora_salida').val(row.hora_salida);
+                    // Tomar la fecha de la vista principal y mostrarla en el modal y en el input oculto
+                    var fechaVista = $('#fecha_ejecucion_obra').text().trim();
+                    if (fechaVista) {
+                        $('#fecha_ejecucion_obra_modal').text(fechaVista);
+                        $('#fecha_solicitud').val(fechaVista);
+                    }
                     // Obtener feriado actualizado desde getFeriado (siempre desde ejecucion_obra)
                     $.get('../procesos/ejecucion_obra/horasTrabajoDiario.php', {accion: 'getFeriado', id_ejecucion_obra: id_ejecucion_obra}, function(respFeriado) {
                         var rF = JSON.parse(respFeriado);
@@ -202,6 +242,7 @@ $(document).ready(function() {
                         $('#feriadoHTD').val(feriadoVal);
                         $('#feriadoHTD_hidden').val(feriadoVal);
                         $('#feriadoHTD').trigger('change');
+                        setTimeout(calcularHorasHTD, 100); // Forzar cálculo después de cargar todo
                     });
                     // Cambiar el título del modal a EDITAR
                     $('#formModalLabelHTD').text('EDITAR REGISTRO DE HORAS');
@@ -300,6 +341,11 @@ function limpiarFormulario() {
         var data = dt.rows({search:'applied'}).data().toArray();
         var wb = new window.ExcelJS.Workbook();
         var ws = wb.addWorksheet('HORAS DE TRABAJO');
+        // Encabezado personalizado con fecha y feriado
+        var fecha = $('#fecha_ejecucion_obra').text();
+        var feriado = $('#feriado_ejecucion_obra').text();
+        ws.addRow([`Fecha:`, fecha, '', 'Feriado:', feriado]);
+        ws.addRow([]); // Espacio
         ws.columns = [
             { header: 'Empleado', key: 'empleado', width: 32 },
             { header: 'Hora Entrada', key: 'entrada', width: 15 },
@@ -361,6 +407,13 @@ function limpiarFormulario() {
         doc.setTextColor(40, 55, 71);
         const pageWidth = doc.internal.pageSize.getWidth();
         doc.text("HORAS DE TRABAJO ", pageWidth / 2, 40, { align: "center" });
+        // Encabezado personalizado con fecha y feriado
+        var fechaCabecera = $('#fecha_ejecucion_obra').text();
+        var feriadoCabecera = $('#feriado_ejecucion_obra').text();
+        doc.setFontSize(12);
+        doc.setTextColor(40, 55, 71);
+        doc.text(`Fecha: ${fechaCabecera}    Feriado: ${feriadoCabecera}`, pageWidth / 2, 60, { align: "center" });
+        doc.setFontSize(20);
         const columns = [
             { header: 'Empleado', dataKey: 'empleado' },
             { header: 'Hora Entrada', dataKey: 'entrada' },
@@ -409,10 +462,10 @@ function limpiarFormulario() {
                 }
             }
         });
-        const fecha = new Date().toLocaleString();
+        const fechaGenerado = new Date().toLocaleString();
         doc.setFontSize(10);
         doc.setTextColor(127, 140, 141);
-        doc.text(`Generado el: ${fecha}`, 40, doc.internal.pageSize.getHeight() - 30);
+        doc.text(`Generado el: ${fechaGenerado}`, 40, doc.internal.pageSize.getHeight() - 30);
         doc.save('Horas_Trabajo_Diario.pdf');
     }
     $('#btnExportExcelHTD').off('click').on('click', exportarExcelHTD);
