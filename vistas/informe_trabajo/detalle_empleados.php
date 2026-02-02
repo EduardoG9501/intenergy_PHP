@@ -5,38 +5,26 @@ $id_informe = $_GET['id_informe'] ?? 0;
 ?> 
 <div>
     <h4>Empleados del Informe</h4>
-     <button class="btn btn-default" id="btnAgregarEmpleadoInterno">
-      <span class="glyphicon glyphicon-plus"></span> Agregar Interno
-    </button>
-    <button class="btn btn-default" id="btnAgregarEmpleadoExterno">
-      <span class="glyphicon glyphicon-plus"></span> Agregar Externo
-    </button>
+         <button class="btn btn-default" id="btnAgregarEmpleadoInterno">
+            <span class="glyphicon glyphicon-plus"></span> Agregar Empleado
+        </button>
     <hr>
-    <table id="gridEmpleadosInternos"  class="table table-striped nowrap" style="width:100%"> 
+    <table id="gridEmpleados"  class="table table-striped nowrap" style="width:100%"> 
         <thead>
             <tr>
-                <th>Empleado Interno</th>
+                <th>Empleado</th>
                 <th>Acciones</th>
             </tr>
         </thead>
         <tbody></tbody>
     </table>
-    <table id="gridEmpleadosExternos"  class="table table-striped nowrap" style="width:100%">
-        <thead>
-            <tr>
-                <th>Empleado Externo</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-    <!-- Modal Empleado Interno -->
-    <div id="modalEmpleadoInterno" class="modal fade" tabindex="-1" role="dialog">
+    <!-- Modal Empleado Unificado -->
+    <div id="modalEmpleado" class="modal fade" tabindex="-1" role="dialog">
         <div class="modal-dialog">
-        <form id="formEmpleadoInterno" class="modal-content">
+        <form id="formEmpleado" class="modal-content">
             <div class="modal-header">
-                <h4>Agregar/Editar Empleado Interno</h4>
-                <button type="button" id="closeModalInterno" class="close" data-dismiss="modal">&times;</button>
+                <h4>Agregar/Editar Empleado</h4>
+                <button type="button" id="closeModalEmpleado" class="close" data-dismiss="modal">&times;</button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="id_informe_empleado" name="id_informe_empleado">
@@ -45,28 +33,7 @@ $id_informe = $_GET['id_informe'] ?? 0;
                 <select id="id_empleado" name="id_empleado" style="width: 100%;" required></select>
             </div>
             <div class="modal-footer form-acciones"> 
-                <button type="button" id="cancelarInterno" class="btn btn-danger" data-dismiss="modal">CANCELAR</button>
-                <button type="submit" class="btn btn-success">GUARDAR</button>
-            </div>
-        </form>
-        </div>
-    </div>
-    <!-- Modal Empleado Externo -->
-    <div id="modalEmpleadoExterno" class="modal fade" tabindex="-1" role="dialog">
-        <div class="modal-dialog">
-        <form id="formEmpleadoExterno" class="modal-content">
-            <div class="modal-header">
-                <h4>Agregar/Editar Empleado Externo</h4>
-                <button type="button" id="closeModalExterno" class="close" data-dismiss="modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="id_informe_empleado_externo" name="id_informe_empleado_externo">
-                <input type="hidden" id="id_informe" name="id_informe" value="<?php echo $id_informe;?>">
-                <label>Empleado:</label>
-                <select id="id_empleado_externo" name="id_empleado_externo" style="width: 100%;" required></select>
-            </div>
-            <div class="modal-footer form-acciones"> 
-                <button type="button" id="cancelarExterno" class="btn btn-danger" data-dismiss="modal">CANCELAR</button>
+                <button type="button" id="cancelarEmpleado" class="btn btn-danger" data-dismiss="modal">CANCELAR</button>
                 <button type="submit" class="btn btn-success">GUARDAR</button>
             </div>
         </form>
@@ -74,51 +41,53 @@ $id_informe = $_GET['id_informe'] ?? 0;
     </div>
 </div> 
 <script>
+function guardarEmpleado() {
+    const datos = new FormData(document.getElementById('formEmpleado'));
+    datos.append('action', $('#id_informe_empleado').val() ? 'editar_empleado_interno' : 'agregar_empleado_interno');
+    fetch('../procesos/informe_trabajo/informe_trabajo.php', {
+        method: 'POST',
+        body: datos
+    })
+    .then(resp => resp.json())
+    .then(r => {
+        $('#modalEmpleado').modal('hide');
+        cargarEmpleados(document.getElementById('id_informe').value);
+    })
+    .catch(error => {
+        console.error('Error AJAX:', error);
+    });
+}
+
 $(document).ready(function() {
     const id_informe = <?php echo json_encode($id_informe); ?>;
     $('#id_informe').val(id_informe);
 
-    cargarEmpleadosInternos(id_informe);
-    cargarEmpleadosExternos(id_informe);
+    cargarEmpleados(id_informe);
     cargarComboEmpleados();
-    cargarComboEmpleadosExternos();
 
     $('#btnAgregarEmpleadoInterno').on('click', function() {
-        $('#modalEmpleadoInterno').modal('show');
-        $('#formEmpleadoInterno')[0].reset();
+        $('#modalEmpleado').modal('show');
+        $('#formEmpleado')[0].reset();
         $('#id_informe_empleado').val('');
     });
-    $('#btnAgregarEmpleadoExterno').on('click', function() {
-        $('#modalEmpleadoExterno').modal('show');
-        $('#formEmpleadoExterno')[0].reset();
-        $('#id_informe_empleado_externo').val('');
+
+    $('#cancelarEmpleado, #closeModalEmpleado').on('click', function() {
+        $('#modalEmpleado').modal('hide');
     });
 
-    $('#cancelarInterno, #closeModalInterno').on('click', function() {
-        $('#modalEmpleadoInterno').modal('hide');
-    });
-    $('#cancelarExterno, #closeModalExterno').on('click', function() {
-        $('#modalEmpleadoExterno').modal('hide');
-    });
-
-    $('#formEmpleadoInterno').on('submit', function(e){
+    $('#formEmpleado').on('submit', function(e){
         e.preventDefault();
-        guardarEmpleadoInterno();
-    });
-
-    $('#formEmpleadoExterno').on('submit', function(e){
-        e.preventDefault();
-        guardarEmpleadoExterno();
+        guardarEmpleado();
     });
 });
 
-function cargarEmpleadosInternos(id_informe) {
+function cargarEmpleados(id_informe) {
     fetch('../procesos/informe_trabajo/informe_trabajo.php', {
         method: 'POST',
         body: new URLSearchParams({action:'listar_empleados_internos', id_informe})
     })
     .then(resp => resp.json())
-    .then(data => pintarGridEmpleadosInternos(data))
+    .then(data => pintarGridEmpleados(data))
     .catch(error => {
         console.error('Error AJAX:', error);
     });
@@ -154,7 +123,7 @@ function cargarComboEmpleados() {
         });
         $('#id_empleado').select2({
             width: 'resolve',
-            dropdownParent: $('#modalEmpleadoInterno')
+            dropdownParent: $('#modalEmpleado')
         });
     })
     .catch(error => {
@@ -187,16 +156,16 @@ function cargarComboEmpleadosExternos() {
         console.error('Error AJAX:', error);
     });
 }
-function pintarGridEmpleadosInternos(empleados) {
-    const tbody = document.querySelector('#gridEmpleadosInternos tbody');
+function pintarGridEmpleados(empleados) {
+    const tbody = document.querySelector('#gridEmpleados tbody');
     tbody.innerHTML = '';
     empleados.forEach(e => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${e.nombres_apellidos}</td>
             <td>
-                <button class="btn btn-warning" onclick="editarEmpleadoInterno(${e.id_informe_empleado}, ${e.id_empleado})"><i class="glyphicon glyphicon-edit"></i></button>
-                <button class="btn btn-danger" onclick="eliminarEmpleadoInterno(${e.id_informe_empleado})"><i class="glyphicon glyphicon-trash"></i></button>
+                <button class="btn btn-warning" onclick="editarEmpleado(${e.id_informe_empleado}, ${e.id_empleado})"><i class="glyphicon glyphicon-edit"></i></button>
+                <button class="btn btn-danger" onclick="eliminarEmpleado(${e.id_informe_empleado})"><i class="glyphicon glyphicon-trash"></i></button>
             </td>
         `;
         tbody.appendChild(tr);
@@ -219,25 +188,40 @@ function pintarGridEmpleadosExternos(empleados) {
     });
 }
 
-function editarEmpleadoInterno(id, id_empleado) {
-    $('#modalEmpleadoInterno').modal('show');
+function editarEmpleado(id, id_empleado) {
+    $('#modalEmpleado').modal('show');
     $('#id_informe_empleado').val(id);
     $('#id_empleado').val(id_empleado).trigger('change');
 }
-function eliminarEmpleadoInterno(id) {
-    if(confirm("¿Eliminar empleado interno?")){
-        fetch('../procesos/informe_trabajo/informe_trabajo.php', {
-            method: 'POST',
-            body: new URLSearchParams({action:'eliminar_empleado_interno', id_informe_empleado:id})
-        })
-        .then(resp => resp.json())
-        .then(r => {
-            cargarEmpleadosInternos(document.getElementById('id_informe').value);
-        })
-        .catch(error => {
-            console.error('Error AJAX:', error);
-        });
-    }
+function eliminarEmpleado(id) {
+    Swal.fire({
+        title: '¿Estás seguro que deseas eliminar este registro?',
+        text: 'Se eliminará este empleado del informe en caso que presiones Sí, eliminar.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar!',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true,
+        customClass: {
+            confirmButton: 'btn btn-success ms-3',
+            cancelButton: 'btn btn-danger me-3'
+        },
+        buttonsStyling: false
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch('../procesos/informe_trabajo/informe_trabajo.php', {
+                method: 'POST',
+                body: new URLSearchParams({action:'eliminar_empleado_interno', id_informe_empleado:id})
+            })
+            .then(resp => resp.json())
+            .then(r => {
+                cargarEmpleados(document.getElementById('id_informe').value);
+            })
+            .catch(error => {
+                console.error('Error AJAX:', error);
+            });
+        }
+    });
 }
 function editarEmpleadoExterno(id, id_empleado_externo) {
     $('#modalEmpleadoExterno').modal('show');
@@ -297,3 +281,9 @@ function guardarEmpleadoExterno() {
     header("location:../../index.php");
 }
 ?>
+<style>
+  /* Forzar separación entre botones de SweetAlert2 en todos los diálogos */
+  .swal2-actions .btn + .btn {
+    margin-left: 1rem !important;
+  }
+</style>

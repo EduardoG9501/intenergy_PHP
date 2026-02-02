@@ -5,6 +5,12 @@ $id_informe = $_GET['id_informe'];
 $informe = new InformeTrabajo();
 $imagenes = $informe->listarImagenes($id_informe);
 ?>
+<style>
+  /* Forzar separación entre botones de SweetAlert2 en todos los diálogos */
+  .swal2-actions .btn + .btn {
+    margin-left: 1rem !important;
+  }
+</style>
 <div class="table-responsive">
     <button class="btn btn-default" onclick="$('#modalAgregarImagen').modal('show')">
         <i class="glyphicon glyphicon-plus"></i> Agregar imagen
@@ -126,10 +132,23 @@ $('#formAgregarImagen').submit(function(e){
             let r = JSON.parse(resp);
             if (r[0] && r[0].success) {
                 $('#modalAgregarImagen').modal('hide');
-                alert('Imagen subida correctamente.');
-                recargarTablaImagenes();
+                Swal.fire({
+                    title: '¡Imagen subida correctamente!',
+                    icon: 'success',
+                    confirmButtonText: 'Aceptar',
+                    customClass: { confirmButton: 'btn btn-success' },
+                    buttonsStyling: false
+                }).then(() => {
+                    recargarTablaImagenes();
+                });
             } else {
-                alert('Error al subir la imagen.');
+                Swal.fire({
+                    title: 'Error al subir la imagen.',
+                    icon: 'error',
+                    confirmButtonText: 'Aceptar',
+                    customClass: { confirmButton: 'btn btn-danger' },
+                    buttonsStyling: false
+                });
             }
         }
     });
@@ -154,29 +173,70 @@ $('#formEditarImagen').submit(function(e){
             let r = JSON.parse(resp);
             if (r.success) {
                 $('#modalEditarImagen').modal('hide');
-                alert('Imagen actualizada.');
-                recargarTablaImagenes();
+                Swal.fire({
+                    title: '¡Imagen actualizada!',
+                    icon: 'success',
+                    confirmButtonText: 'Aceptar',
+                    customClass: { confirmButton: 'btn btn-success' },
+                    buttonsStyling: false
+                }).then(() => {
+                    recargarTablaImagenes();
+                });
             } else {
-                alert('Error al actualizar la imagen.');
+                Swal.fire({
+                    title: 'Error al actualizar la imagen.',
+                    icon: 'error',
+                    confirmButtonText: 'Aceptar',
+                    customClass: { confirmButton: 'btn btn-danger' },
+                    buttonsStyling: false
+                });
             }
         }
     });
 });
 
 function eliminarImagen(id) {
-    if (confirm('¿Seguro que quieres eliminar esta imagen?')) {
-        $.post('../procesos/informe_trabajo/informe_trabajo.php', {
-            action: 'eliminar_imagen',
-            id_informe_imagen: id
-        }, function(resp) {
-            let r = JSON.parse(resp);
-            if (r.success) {
-                alert('Imagen eliminada.');
-                recargarTablaImagenes();
-            } else {
-                alert('Error al eliminar la imagen.');
-            }
-        });
-    }
+    Swal.fire({
+        title: '¿Estás seguro que deseas eliminar esta imagen?',
+        text: 'Se eliminará la imagen del informe en caso que presiones Sí, eliminar.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar!',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true,
+        customClass: {
+            confirmButton: 'btn btn-success ms-3',
+            cancelButton: 'btn btn-danger me-3'
+        },
+        buttonsStyling: false
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.post('../procesos/informe_trabajo/informe_trabajo.php', {
+                action: 'eliminar_imagen',
+                id_informe_imagen: id
+            }, function(resp) {
+                let r = JSON.parse(resp);
+                if (r.success) {
+                    Swal.fire({
+                        title: 'Imagen eliminada.',
+                        icon: 'success',
+                        confirmButtonText: 'Aceptar',
+                        customClass: { confirmButton: 'btn btn-success' },
+                        buttonsStyling: false
+                    }).then(() => {
+                        recargarTablaImagenes();
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error al eliminar la imagen.',
+                        icon: 'error',
+                        confirmButtonText: 'Aceptar',
+                        customClass: { confirmButton: 'btn btn-danger' },
+                        buttonsStyling: false
+                    });
+                }
+            });
+        }
+    });
 }
 </script>

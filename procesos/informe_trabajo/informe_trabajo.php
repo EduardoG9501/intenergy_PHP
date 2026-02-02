@@ -8,10 +8,16 @@ $informe = new InformeTrabajo();
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 switch($action) {
+        case 'actualizar_descripcion':
+            $id_informe = $_POST['id_informe'] ?? 0;
+            $descripcion = $_POST['descripcion'] ?? '';
+            echo json_encode($informe->actualizarDescripcion($id_informe, $descripcion));
+            break;
     case 'listar':
-        // FILTRO POR BODEGA SELECCIONADA
+        // Permitir filtro por ejecución de obra o por bodega
         $id_bodega = isset($_SESSION['bodega_seleccionada']) ? $_SESSION['bodega_seleccionada'] : null;
-        echo json_encode($informe->listar($id_bodega));
+        $id_ejecucion_obra = $_POST['id_ejecucion_obra'] ?? null;
+        echo json_encode($informe->listar($id_bodega, $id_ejecucion_obra));
         break;
     case 'obtener':
         $id = $_POST['id_informe'] ?? 0;
@@ -31,8 +37,8 @@ switch($action) {
     case 'listar_empleados':
         echo json_encode($informe->listarEmpleados());
         break;
-    case 'listar_ordenes':
-        echo json_encode($informe->listarOrdenes());
+    case 'listar_ejecuciones':
+        echo json_encode($informe->listarEjecuciones());
         break;
 
     // Empleados internos
@@ -191,7 +197,7 @@ switch($action) {
         $exito = $informe->eliminarImagen($id_informe_imagen); 
         echo json_encode(['success' => $exito]);
         break;
-    case 'listar_ordenes_trabajo':
+    case 'listar_ejecuciones_obra':
         echo json_encode($informe->listarOrdenesTrabajo());
         break;
     default:

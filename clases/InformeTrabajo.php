@@ -3,7 +3,7 @@ class InformeTrabajo {
 
     // ----------- INFORMES PRINCIPALES -----------
     // Ahora acepta $id_bodega como parámetro para filtrar por bodega seleccionada
-    public function listar($id_bodega = null) {
+    public function listar($id_bodega = null, $id_ejecucion_obra = null) {
         $c = new conectar();
         $conexion = $c->conexion();
         $datos = [];
@@ -13,16 +13,23 @@ class InformeTrabajo {
             $id_bodega = intval($id_bodega);
             $filtro .= " AND it.id_bodega_principal = $id_bodega";
         }
+        if ($id_ejecucion_obra !== null && $id_ejecucion_obra !== '' && intval($id_ejecucion_obra) > 0) {
+            $id_ejecucion_obra = intval($id_ejecucion_obra);
+            $filtro .= " AND it.id_ejecucion_obra = $id_ejecucion_obra";
+        }
 
-        $sql = "SELECT it.*, ot.identificador AS orden_identificador, bp.nombreBodega AS bodega_principal, bs.nombreBodega AS bodega_secundaria, ot.observacion nombreorden
-                FROM informe_trabajo it
-                JOIN ordenes_trabajo ot ON it.id_orden = ot.id_orden
-                JOIN bodegas bp ON it.id_bodega_principal = bp.id_bodega
-                JOIN bodegas bs ON it.id_bodega_secundaria = bs.id_bodega
-                $filtro
-                ORDER BY it.id_informe DESC";
+        $sql = "SELECT it.*, eo.id_orden, eo.id_ejecucion_obra, eo.fecha_solicitud, eo.observacion AS ejecucion_observacion, ot.identificador, bp.nombreBodega AS bodega_principal, bs.nombreBodega AS bodega_secundaria
+            FROM informe_trabajo it
+            JOIN ejecucion_obra eo ON it.id_ejecucion_obra = eo.id_ejecucion_obra
+            LEFT JOIN ordenes_trabajo ot ON eo.id_orden = ot.id_orden
+            JOIN bodegas bp ON it.id_bodega_principal = bp.id_bodega
+            JOIN bodegas bs ON it.id_bodega_secundaria = bs.id_bodega
+            $filtro
+            ORDER BY it.id_informe DESC";
         $result = mysqli_query($conexion, $sql);
         while ($fila = mysqli_fetch_assoc($result)) {
+            // Concatenar identificador de orden + id_ejecucion_obra para el grid
+            $fila['identificador_ejecucion'] = ($fila['identificador'] ? $fila['identificador'] : '') . ' - ' . $fila['id_ejecucion_obra'];
             $datos[] = $fila;
         }
         return $datos;
@@ -44,19 +51,19 @@ class InformeTrabajo {
         $id_bodega_principal = $data['id_bodega_principal'];
         $id_bodega_secundaria = $data['id_bodega_secundaria'];
         $observacion = mysqli_real_escape_string($conexion, $data['observacion']);
-        $id_orden = $data['id_orden'];
+        $id_ejecucion_obra = $data['id_ejecucion_obra'];
 
         if ($id > 0) {
             $sql = "UPDATE informe_trabajo SET 
                         fecha='$fecha', id_bodega_principal='$id_bodega_principal', 
                         id_bodega_secundaria='$id_bodega_secundaria', 
-                        observacion='$observacion', id_orden='$id_orden'
+                        observacion='$observacion', id_ejecucion_obra='$id_ejecucion_obra'
                     WHERE id_informe='$id'";
             mysqli_query($conexion, $sql);
             return ['success' => true, 'msg' => 'Informe actualizado'];
         } else {
-            $sql = "INSERT INTO informe_trabajo (id_usuario, fecha, id_bodega_principal, id_bodega_secundaria, observacion, id_orden, estado)
-                    VALUES ('$id_usuario', '$fecha', '$id_bodega_principal', '$id_bodega_secundaria', '$observacion', '$id_orden', 1)";
+            $sql = "INSERT INTO informe_trabajo (id_usuario, fecha, id_bodega_principal, id_bodega_secundaria, observacion, id_ejecucion_obra, estado)
+                    VALUES ('$id_usuario', '$fecha', '$id_bodega_principal', '$id_bodega_secundaria', '$observacion', '$id_ejecucion_obra', 1)";
             mysqli_query($conexion, $sql);
             $nuevoId = mysqli_insert_id($conexion);
             return ['success' => true, 'msg' => 'Informe creado', 'id_informe' => $nuevoId];
@@ -97,14 +104,21 @@ class InformeTrabajo {
         return $empleados;
     }
 
-    public function listarOrdenes() {
+    public function listarEjecuciones() {
         $c= new conectar();
         $conexion=$c->conexion();
-        $ordenes = [];
-        $sql = "SELECT id_orden, identificador, observacion FROM ordenes_trabajo WHERE estado=1";
+        $ejecuciones = [];
+        $sql = "SELECT eo.id_ejecucion_obra, eo.id_orden, eo.fecha_solicitud, eo.observacion, ot.identificador
+                FROM ejecucion_obra eo
+                LEFT JOIN ordenes_trabajo ot ON eo.id_orden = ot.id_orden
+                WHERE 1";
         $rs = mysqli_query($conexion, $sql);
-        while ($row = mysqli_fetch_assoc($rs)) $ordenes[] = $row;
-        return $ordenes;
+        while ($row = mysqli_fetch_assoc($rs)) {
+            // Concatenar identificador de orden + id_ejecucion_obra
+            $row['identificador_ejecucion'] = ($row['identificador'] ? $row['identificador'] : '') . ' - ' . $row['id_ejecucion_obra'];
+            $ejecuciones[] = $row;
+        }
+        return $ejecuciones;
     }
 
     // ----------- EMPLEADOS INTERNOS -----------
@@ -217,11 +231,11 @@ class InformeTrabajo {
     public function listarOrdenesTrabajo() {
         $c= new conectar();
         $conexion=$c->conexion();
-        $ordenes = [];
-        $sql = "SELECT id_orden, identificador, observacion nombre, observacion FROM ordenes_trabajo WHERE estado=1 order by id_orden desc";
+        $ejecuciones = [];
+        $sql = "SELECT id_ejecucion_obra, id_orden, fecha_solicitud, observacion FROM ejecucion_obra WHERE 1 order by id_ejecucion_obra desc";
         $rs = mysqli_query($conexion, $sql);
-        while ($row = mysqli_fetch_assoc($rs)) $ordenes[] = $row;
-        return $ordenes;
+        while ($row = mysqli_fetch_assoc($rs)) $ejecuciones[] = $row;
+        return $ejecuciones;
     }
     public function editarEmpleadoInterno($id_informe_empleado, $id_empleado) {
         $c= new conectar();
@@ -310,6 +324,15 @@ class InformeTrabajo {
         $result = $stmt->execute();
         $stmt->close();
         return $result;
+    }
+     public function actualizarDescripcion($id_informe, $descripcion) {
+        $c = new conectar();
+        $conexion = $c->conexion();
+        $descripcion = mysqli_real_escape_string($conexion, $descripcion);
+        $id_informe = intval($id_informe);
+        $sql = "UPDATE informe_trabajo SET descripcion='$descripcion' WHERE id_informe=$id_informe";
+        $res = mysqli_query($conexion, $sql);
+        return ['success' => $res];
     }
     // Puedes seguir agregando más métodos según lo que necesite tu módulo.
 }

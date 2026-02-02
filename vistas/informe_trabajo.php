@@ -53,18 +53,27 @@ if (!$acceso) {
             background: #ffdada;
         }
         .nav-tabs { margin-bottom:0; }
-    </style></head>
-<body> 
+    </style>
+</head>
+<body>
 <div class="container">
+    <?php
+    $id_ejecucion_obra = isset($_GET['id_ejecucion_obra']) ? intval($_GET['id_ejecucion_obra']) : 0;
+    $identificador = isset($_GET['identificador']) ? $_GET['identificador'] : '';
+    if ($id_ejecucion_obra) {
+        echo '<button class="btn btn-warning" onclick="window.location.href=\'ejecucionobra.php\'">&larr; Regresar</button>';
+        echo '<span style="font-weight:bold; font-size:16px; margin-left:10px;">Ejecución: <span style="font-weight:bold;color: #880202ff;">' . htmlspecialchars($identificador) . ' - ' . $id_ejecucion_obra . '</span></span>';
+    }
+    ?>
     <button id="btnAgregarInforme" class="btn btn-primary">
-      <i class="glyphicon glyphicon-plus"></i> NUEVO
-    </button> 
+        <i class="glyphicon glyphicon-plus"></i> NUEVO
+    </button>
     <button id="btnExportExcel" class="btn btn-success">
-       <i class="glyphicon glyphicon-download"></i> Excel
+        <i class="glyphicon glyphicon-download"></i> Excel
     </button>
     <button id="btnExportPDF" class="btn btn-danger">
-         <i class="glyphicon glyphicon-download"></i> PDF
-    </button> 
+        <i class="glyphicon glyphicon-download"></i> PDF
+    </button>
     <hr>
     <!-- Grid de Informes -->
     <div id="gridContainer">
@@ -72,7 +81,7 @@ if (!$acceso) {
             <thead>
                 <tr>
                     <th>ID</th>
-                    <th>Orden Trabajo</th>
+                    <th>Ejecución de Obra</th>
                     <th>Fecha</th>
                     <th>Lugar</th>
                     <th>Ubicaciòn</th>
@@ -99,8 +108,8 @@ if (!$acceso) {
                     <input type="hidden" id="id_informe" name="id_informe">
                     <div class="row">
                         <div class="col-sm-6">
-                            <label class="label-custom">ORDEN DE TRABAJO:</label> 
-                            <select name="id_orden" id="id_orden" style="width: 270px;" required></select>
+                            <label class="label-custom">EJECUCIÓN DE OBRA:</label> 
+                            <select name="id_ejecucion_obra" id="id_ejecucion_obra" style="width: 270px;" required></select>
                             <label class="label-custom">FECHA:</label>
                             <input class="form-control input-sm" type="date" id="fecha" name="fecha" required>
                             <label class="label-custom">LUGAR:</label>
@@ -138,9 +147,10 @@ if (!$acceso) {
 
 let bodegasCache = [];
 
+window.idEjecucionObraFiltro = <?php echo isset($_GET['id_ejecucion_obra']) && intval($_GET['id_ejecucion_obra']) > 0 ? intval($_GET['id_ejecucion_obra']) : 'null'; ?>;
 $(document).ready(function() {
     cargarInformes();
-    cargarOrdenes();
+    cargarEjecucionesObra();
     cargarBodegas();
 
     $('#btnAgregarInforme').on('click', function() {
@@ -233,28 +243,39 @@ $(document).ready(function() {
     });
 });
 
+
 function cargarInformes() {
+    let params = {action: 'listar'};
+    if (window.idEjecucionObraFiltro) {
+        params.id_ejecucion_obra = window.idEjecucionObraFiltro;
+    }
     fetch('../procesos/informe_trabajo/informe_trabajo.php', {
         method: 'POST',
-        body: new URLSearchParams({action: 'listar'})
+        body: new URLSearchParams(params)
     })
     .then(resp => resp.json())
     .then(data => pintarGridInformes(data));
 }
 
-function cargarOrdenes() {
+function cargarEjecucionesObra() {
     return fetch('../procesos/informe_trabajo/informe_trabajo.php', {
         method: 'POST',
-        body: new URLSearchParams({action:'listar_ordenes_trabajo'})
+        body: new URLSearchParams({action:'listar_ejecuciones'})
     })
     .then(resp => resp.json())
-    .then(ordenes => {
-        const sel = document.getElementById('id_orden');
+    .then(ejecuciones => {
+        const sel = document.getElementById('id_ejecucion_obra');
         sel.innerHTML = '';
-        ordenes.forEach(o => {
-            sel.innerHTML += `<option value="${o.id_orden}">${o.identificador ? o.identificador : o.nombre}</option>`;
+        ejecuciones.forEach(e => {
+            sel.innerHTML += `<option value="${e.id_ejecucion_obra}">${e.identificador_ejecucion ? e.identificador_ejecucion : (e.id_ejecucion_obra + (e.observacion ? ' - ' + e.observacion : ''))}</option>`;
         });
-        if (window.$ && typeof $('#id_orden').select2 === 'function') $('#id_orden').select2();
+        if (window.$ && typeof $('#id_ejecucion_obra').select2 === 'function') {
+            $('#id_ejecucion_obra').select2({
+                width: 'resolve',
+                dropdownParent: $('#formModalInforme'),
+                minimumResultsForSearch: 0 // Siempre muestra la caja de búsqueda
+            });
+        }
     });
 }
 
@@ -335,16 +356,33 @@ function mostrarFormularioInforme(informe = null) {
     if (informe && informe.id_informe) {
         $('#formModalLabel').text('Editar Informe Diario');
         Object.keys(informe).forEach(k => {
-            if ($('#' + k).length && k !== 'id_orden') {
+            if ($('#' + k).length && k !== 'id_ejecucion_obra') {
                 $('#' + k).val(informe[k]);
             }
         });
-        $('#id_orden').val(informe.id_orden).trigger('change');
+        $('#id_ejecucion_obra').val(informe.id_ejecucion_obra).trigger('change');
         id_informe = informe.id_informe;
         $('#id_informe').val(id_informe);
 
-        // Esperar a que se carguen bodegas para setear los combos correctamente
+        // Bloqueo de ejecución de obra si viene de filtro
         setTimeout(function() {
+            if (window.idEjecucionObraFiltro) {
+                $('#id_ejecucion_obra').prop('disabled', true);
+                // Agregar input hidden si no existe
+                let hiddenEjecucion = document.getElementById('hidden_id_ejecucion_obra');
+                if (!hiddenEjecucion) {
+                    hiddenEjecucion = document.createElement('input');
+                    hiddenEjecucion.type = 'hidden';
+                    hiddenEjecucion.id = 'hidden_id_ejecucion_obra';
+                    hiddenEjecucion.name = 'id_ejecucion_obra';
+                    document.getElementById('id_ejecucion_obra').parentNode.appendChild(hiddenEjecucion);
+                }
+                hiddenEjecucion.value = window.idEjecucionObraFiltro;
+            } else {
+                $('#id_ejecucion_obra').prop('disabled', false);
+                let hiddenEjecucion = document.getElementById('hidden_id_ejecucion_obra');
+                if (hiddenEjecucion) hiddenEjecucion.remove();
+            }
             if (selectBodega && informe.id_bodega_principal) {
                 selectBodega.value = informe.id_bodega_principal;
                 $('#id_bodega_principal').trigger('change');
@@ -356,7 +394,6 @@ function mostrarFormularioInforme(informe = null) {
                 }
             }, 200);
         }, 200);
-
     } else {
         $('#formModalLabel').text('Nuevo Informe Diario');
         $('#formInforme')[0].reset();
@@ -367,12 +404,28 @@ function mostrarFormularioInforme(informe = null) {
         $('#fecha').val(`${yyyy}-${mm}-${dd}`);
         $('#id_informe').val('');
 
-        // Después de cargar bodegas (si ya cargó), sincroniza los selects
         setTimeout(function() {
+            if (window.idEjecucionObraFiltro) {
+                $('#id_ejecucion_obra').val(window.idEjecucionObraFiltro).trigger('change');
+                $('#id_ejecucion_obra').prop('disabled', true);
+                // Agregar input hidden si no existe
+                let hiddenEjecucion = document.getElementById('hidden_id_ejecucion_obra');
+                if (!hiddenEjecucion) {
+                    hiddenEjecucion = document.createElement('input');
+                    hiddenEjecucion.type = 'hidden';
+                    hiddenEjecucion.id = 'hidden_id_ejecucion_obra';
+                    hiddenEjecucion.name = 'id_ejecucion_obra';
+                    document.getElementById('id_ejecucion_obra').parentNode.appendChild(hiddenEjecucion);
+                }
+                hiddenEjecucion.value = window.idEjecucionObraFiltro;
+            } else {
+                $('#id_ejecucion_obra').prop('disabled', false);
+                let hiddenEjecucion = document.getElementById('hidden_id_ejecucion_obra');
+                if (hiddenEjecucion) hiddenEjecucion.remove();
+            }
             if (selectBodega && selectBodega.options.length > 0) {
                 selectBodega.selectedIndex = 0;
                 $('#id_bodega_principal').trigger('change');
-                // Selecciona también la secundaria igual a la principal
                 let principalValue = selectBodega.value;
                 if (selectSecundaria) {
                     selectSecundaria.value = principalValue;
@@ -421,9 +474,10 @@ function pintarGridInformes(informes) {
     tbody.innerHTML = '';
     informes.forEach(informe => {
         const tr = document.createElement('tr');
+        let ejecucionLabel = informe.identificador_ejecucion ? informe.identificador_ejecucion : (informe.id_ejecucion_obra || '');
         tr.innerHTML = `
             <td>${informe.id_informe}</td>
-            <td>${informe.orden_identificador ? informe.orden_identificador : (informe.nombreorden || '')}</td>
+            <td>${ejecucionLabel}</td>
             <td>${informe.fecha}</td>
             <td>${informe.bodega_principal}</td>
             <td>${informe.bodega_secundaria}</td>
@@ -458,13 +512,20 @@ function desplegarDetalle(id_informe, btn) {
                 <li class="active"><a style="background: #deeff9;" href="#" onclick="cargarDetalleEmpleadosInline(${id_informe}, this);return false;">Empleados</a></li>
                 <li><a style="background: #deeff9;" href="#" onclick="cargarDetalleArticulosInline(${id_informe}, this);return false;">Artículos</a></li>
                 <li><a style="background: #deeff9;" href="#" onclick="cargarDetalleImagenesInline(${id_informe}, this);return false;">Imágenes</a></li>
+                <li><a style="background: #deeff9;" href="#" onclick="cargarDetalleDescripcionInline(${id_informe}, this);return false;">Descripción</a></li>
             </ul>
             <div id="detalleContenidoInline${id_informe}" style="padding:10px;"></div>
         </div>
     </td>`;
     // Inserta después de la fila seleccionada
     tr.parentNode.insertBefore(detalleTr, tr.nextSibling);
+
     cargarDetalleEmpleadosInline(id_informe, detalleTr.querySelector("li a"));
+}
+
+function cargarDetalleDescripcionInline(id_informe, tab) {
+    activarTabInline(tab);
+    $('#detalleContenidoInline'+id_informe).load('informe_trabajo/descripcion.php?id_informe=' + id_informe);
 }
 
 function cerrarDetalle(btn) {

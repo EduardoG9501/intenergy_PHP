@@ -49,6 +49,12 @@ $id_informe = $_GET['id_informe'] ?? 0;
         </div>
     </div>
 </div> 
+<style>
+  /* Forzar separación entre botones de SweetAlert2 en todos los diálogos */
+  .swal2-actions .btn + .btn {
+    margin-left: 1rem !important;
+  }
+</style>
 <script>
 $(document).ready(function() {
     const id_informe = <?php echo json_encode($id_informe); ?>;
@@ -138,19 +144,34 @@ function editarArticulo(id,id_producto,cantidad,lote) {
     $('#lote').val(lote);
 }
 function eliminarArticulo(id) {
-    if(confirm("¿Eliminar artículo?")){
-        fetch('../procesos/informe_trabajo/informe_trabajo.php', {
-            method: 'POST',
-            body: new URLSearchParams({action:'eliminar_articulo', id_informe_articulo:id})
-        })
-        .then(resp => resp.json())
-        .then(r => {
-            cargarArticulos(document.getElementById('id_informe').value);
-        })
-        .catch(error => {
-            console.error('Error AJAX:', error);
-        });
-    }
+    Swal.fire({
+        title: '¿Estás seguro que deseas eliminar este registro?',
+        text: 'Se eliminará este artículo del informe en caso que presiones Sí, eliminar.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar!',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true,
+        customClass: {
+            confirmButton: 'btn btn-success ms-3',
+            cancelButton: 'btn btn-danger me-3'
+        },
+        buttonsStyling: false
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch('../procesos/informe_trabajo/informe_trabajo.php', {
+                method: 'POST',
+                body: new URLSearchParams({action:'eliminar_articulo', id_informe_articulo:id})
+            })
+            .then(resp => resp.json())
+            .then(r => {
+                cargarArticulos(document.getElementById('id_informe').value);
+            })
+            .catch(error => {
+                console.error('Error AJAX:', error);
+            });
+        }
+    });
 }
 function guardarArticulo() {
     const datos = new FormData(document.getElementById('formArticulo'));

@@ -460,16 +460,17 @@ CREATE TABLE solicitud_materiales_detalle (
 CREATE TABLE informe_trabajo (
     id_informe INT AUTO_INCREMENT PRIMARY KEY,
     id_usuario INT NOT NULL, -- quien lo crea
-    id_orden INT NOT NULL,   -- relación con ordenes_trabajo
+    id_ejecucion_obra INT NOT NULL,   -- relación con ejecucion_obra
     fecha DATE NOT NULL,
     id_bodega_principal INT NOT NULL,
     id_bodega_secundaria INT NULL,
     lugar VARCHAR(150)  NULL, -- ejemplo: TROPACK
     observacion TEXT,
+    descripcion TEXT,
     fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     estado BIT NOT NULL DEFAULT 1, -- 1=activo, 0=inactivo
     FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario),
-    FOREIGN KEY (id_orden) REFERENCES ordenes_trabajo(id_orden),
+    FOREIGN KEY (id_ejecucion_obra) REFERENCES ejecucion_obra(id_ejecucion_obra),
     FOREIGN KEY (id_bodega_principal) REFERENCES bodegas(id_bodega)
 );
 

@@ -214,7 +214,7 @@ window.onclick = function(event) {
 	}
 }
 function pintarGridEjecucion(ejecuciones) { 
-   const $grid = $('#gridEjecucionObra');
+	const $grid = $('#gridEjecucionObra');
 	if ($.fn.DataTable.isDataTable($grid)) {
 		$grid.DataTable().destroy();
 	} 
@@ -234,7 +234,7 @@ function pintarGridEjecucion(ejecuciones) {
 				<button class="btn btn-warning" onclick="editarEjecucion(${ejecucion.id_ejecucion_obra})"><i class="glyphicon glyphicon-edit"></i></button>
 				   <a class="btn btn-info" href="detalle_ejecucion_obra.php?id_ejecucion_obra=${ejecucion.id_ejecucion_obra}&id_estado_ejecucion_obra=${ejecucion.id_estado_ejecucion_obra}${idOrdenParam}">MATERIALES</a>
 				   <a class="btn btn-primary" href="horas_trabajo_diario.php?id_ejecucion_obra=${ejecucion.id_ejecucion_obra}&id_estado_ejecucion_obra=${ejecucion.id_estado_ejecucion_obra}${idOrdenParam}">H.TRABAJO</a>
-				   <a class="btn btn-success" href="detalle_ejecucion_obra.php?id_ejecucion_obra=${ejecucion.id_ejecucion_obra}&id_estado_ejecucion_obra=${ejecucion.id_estado_ejecucion_obra}${idOrdenParam}">INF.DIARIO</a>
+				<a class="btn btn-success" href="informe_trabajo.php?id_ejecucion_obra=${ejecucion.id_ejecucion_obra}&identificador=${encodeURIComponent(ejecucion.orden_identificador)}">INF.DIARIO</a>
 			</td>
 		`;
 		tbody.appendChild(tr);
