@@ -17,31 +17,36 @@ class Reporte {
         $c = new conectar();
         $conexion = $c->conexion();
         $w = [];
-        if (!empty($filtros['fecha_inicial'])) {
-            $w[] = "o.fecha_inicial >= '".mysqli_real_escape_string($conexion, $filtros['fecha_inicial'])."'";
+        if (!empty($filtros['desde'])) {
+            $w[] = "o.fecha_inicial >= '".mysqli_real_escape_string($conexion, $filtros['desde'])."'";
         }
-        if (!empty($filtros['fecha_final'])) {
-            $w[] = "o.fecha_final <= '".mysqli_real_escape_string($conexion, $filtros['fecha_final'])."'";
+        if (!empty($filtros['hasta'])) {
+            $w[] = "o.fecha_inicial <= '".mysqli_real_escape_string($conexion, $filtros['hasta'])."'";
         }
         if (!empty($filtros['lugar'])) {
             $w[] = "o.id_bodega_principal = '".intval($filtros['lugar'])."'";
         }
-        if (!empty($filtros['ubicacion'])) {
-            $w[] = "o.id_bodega_secundaria = '".intval($filtros['ubicacion'])."'";
+        if (!empty($filtros['proyecto'])) {
+            $w[] = "o.id_proyecto = '".intval($filtros['proyecto'])."'";
+        }
+        if (!empty($filtros['obra'])) {
+            $w[] = "o.id_obra = '".intval($filtros['obra'])."'";
         }
         if (!empty($filtros['estado'])) {
             $w[] = "o.id_estado_orden = '".mysqli_real_escape_string($conexion, $filtros['estado'])."'";
         }
         $where = count($w) ? "WHERE ".implode(" AND ", $w) : "";
 
-      $sql = "SELECT o.id_orden, o.costo, o.fecha_inicial, o.fecha_final, 
-                bp.nombreBodega AS lugar, bs.nombreBodega AS ubicacion, o.observacion, est.estado
-                FROM ordenes_trabajo o
-                LEFT JOIN bodegas bp ON o.id_bodega_principal = bp.id_bodega
-                LEFT JOIN bodegas bs ON o.id_bodega_secundaria = bs.id_bodega
-                LEFT JOIN estado_ordenes est ON o.id_estado_orden = est.id_estado_orden
-                $where
-                ORDER BY o.id_orden DESC";
+        $sql = "SELECT o.id_orden, o.costo, o.fecha_inicial, 
+            p.nombre AS proyecto, ob.nombre AS obra, 
+            bp.nombreBodega AS lugar, o.observacion, est.estado
+            FROM ordenes_trabajo o
+            LEFT JOIN bodegas bp ON o.id_bodega_principal = bp.id_bodega
+            LEFT JOIN estado_ordenes est ON o.id_estado_orden = est.id_estado_orden
+            LEFT JOIN proyecto p ON o.id_proyecto = p.id
+            LEFT JOIN obra ob ON o.id_obra = ob.id
+            $where
+            ORDER BY o.id_orden DESC";
         $result = mysqli_query($conexion, $sql);
         $ordenes = [];
         while ($fila = mysqli_fetch_assoc($result)) {
