@@ -13,14 +13,60 @@ switch($action){
 
     case 'listar_reporte_ordenes':
         $filtros = [
-            'fecha_inicial' => $_POST['fecha_inicial'] ?? '',
-            'fecha_final' => $_POST['fecha_final'] ?? '',
+            'desde' => $_POST['desde'] ?? '',
+            'hasta' => $_POST['hasta'] ?? '',
             'lugar' => $_POST['lugar'] ?? '',
-            'ubicacion' => $_POST['ubicacion'] ?? '',
-            'estado' => $_POST['estado'] ?? ''
+            'estado' => $_POST['estado'] ?? '',
+            'proyecto' => $_POST['proyecto'] ?? '',
+            'obra' => $_POST['obra'] ?? ''
         ];
         $data = $reporte->listarReporteOrdenes($filtros);
-        // Garantiza que sea un array
+        if (!is_array($data)) $data = [];
+        echo json_encode($data);
+        break;
+
+    case 'exportar_excel_ordenes':
+        $filtros = [
+            'desde' => $_GET['desde'] ?? '',
+            'hasta' => $_GET['hasta'] ?? '',
+            'lugar' => $_GET['lugar'] ?? '',
+            'estado' => $_GET['estado'] ?? '',
+            'proyecto' => $_GET['proyecto'] ?? '',
+            'obra' => $_GET['obra'] ?? ''
+        ];
+        $data = $reporte->listarReporteOrdenes($filtros);
+        header("Content-Type: application/vnd.ms-excel");
+        header("Content-Disposition: attachment; filename=ordenes_trabajo.xls");
+        echo "ID Orden\tCosto\tFecha\tLugar\tObservación\tEstado\n";
+        foreach($data as $row){
+            echo "{$row['id_orden']}\t{$row['costo']}\t{$row['fecha_inicial']}\t{$row['lugar']}\t{$row['observacion']}\t{$row['estado']}\n";
+        }
+        break;
+
+    default:
+        echo json_encode(['error'=>'Acción no válida']);
+    case 'listar_proyectos':
+        require_once("../../clases/Proyecto.php");
+        $proyObj = new Proyecto();
+        echo json_encode($proyObj->obtenerProyectos());
+        break;
+
+    case 'listar_obras':
+        require_once("../../clases/Obra.php");
+        $obraObj = new Obra();
+        echo json_encode($obraObj->obtenerObras());
+        break;
+
+    case 'listar_reporte_ordenes':
+        $filtros = [
+            'desde' => $_POST['desde'] ?? '',
+            'hasta' => $_POST['hasta'] ?? '',
+            'lugar' => $_POST['lugar'] ?? '',
+            'estado' => $_POST['estado'] ?? '',
+            'proyecto' => $_POST['proyecto'] ?? '',
+            'obra' => $_POST['obra'] ?? ''
+        ];
+        $data = $reporte->listarReporteOrdenes($filtros);
         if (!is_array($data)) $data = [];
         echo json_encode($data);
         break;
@@ -30,19 +76,17 @@ switch($action){
             'fecha_inicial' => $_GET['fecha_inicial'] ?? '',
             'fecha_final' => $_GET['fecha_final'] ?? '',
             'lugar' => $_GET['lugar'] ?? '',
-            'ubicacion' => $_GET['ubicacion'] ?? '',
-            'estado' => $_GET['estado'] ?? ''
+            'estado' => $_GET['estado'] ?? '',
+            'proyecto' => $_GET['proyecto'] ?? '',
+            'obra' => $_GET['obra'] ?? ''
         ];
         $data = $reporte->listarReporteOrdenes($filtros);
         header("Content-Type: application/vnd.ms-excel");
         header("Content-Disposition: attachment; filename=ordenes_trabajo.xls");
-        echo "ID Orden\tCosto\tFecha Inicial\tFecha Final\tLugar\tUbicación\tObservación\tEstado\n";
+        echo "ID Orden\tProyecto\tObra\tCosto\tFecha Inicial\tFecha Final\tLugar\tObservación\tEstado\n";
         foreach($data as $row){
-            echo "{$row['id_orden']}\t{$row['costo']}\t{$row['fecha_inicial']}\t{$row['fecha_final']}\t{$row['lugar']}\t{$row['ubicacion']}\t{$row['observacion']}\t{$row['estado']}\n";
+            echo "{$row['id_orden']}\t{$row['proyecto']}\t{$row['obra']}\t{$row['costo']}\t{$row['fecha_inicial']}\t{$row['fecha_final']}\t{$row['lugar']}\t{$row['observacion']}\t{$row['estado']}\n";
         }
         break;
-
-    default:
-        echo json_encode(['error'=>'Acción no válida']);
 }
 ?>
