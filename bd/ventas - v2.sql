@@ -618,6 +618,8 @@ INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre)
 VALUES ('REPORTES','ENTRADA / SALIDA (KARDEX)','ENTRADA / SALIDA (KARDEX)','reportekardex.php','fa fa-chart-bar'); 
 INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre) 
 VALUES ('REPORTES','INFORME DISPONIBILIDAD POR BODEGAS','INFORME DISPONIBILIDAD POR BODEGAS','reporte_disponibilidad_bodega.php','fa fa-chart-bar'); 
+INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre) 
+VALUES ('REPORTES','INFORME DE PEDIDO DE MATERIALES','INFORME DE PEDIDO DE MATERIALES','reporte_pedido_materiales.php','fa fa-chart-bar'); 
 
 /*ADMIN*/
 INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre,icono_hijo) 

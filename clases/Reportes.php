@@ -399,5 +399,132 @@ class Reporte {
         }
         return $resultados;
     }
+     // Listar proyectos para filtro
+    public function listarProyectos() {
+        $c = new conectar();
+        $conexion = $c->conexion();
+        $sql = "SELECT id, nombre FROM proyecto WHERE estado = 1 ORDER BY nombre";
+        $result = mysqli_query($conexion, $sql);
+        $proyectos = [];
+        while($row = mysqli_fetch_assoc($result)) {
+            $proyectos[] = $row;
+        }
+        return $proyectos;
+    }
+
+    // Listar obras para filtro (opcionalmente por proyecto)
+    public function listarObras($proyecto = '') {
+        $c = new conectar();
+        $conexion = $c->conexion();
+        $where = '';
+        if ($proyecto != '') {
+            $where = "WHERE estado = 1 AND id IN (SELECT id_obra FROM ordenes_trabajo WHERE id_proyecto = '".intval($proyecto)."')";
+        } else {
+            $where = "WHERE estado = 1";
+        }
+        $sql = "SELECT id, nombre FROM obra $where ORDER BY nombre";
+        $result = mysqli_query($conexion, $sql);
+        $obras = [];
+        while($row = mysqli_fetch_assoc($result)) {
+            $obras[] = $row;
+        }
+        return $obras;
+    }
+
+    // Listar lugares (bodegas) para filtro
+    public function listarLugares() {
+        $c = new conectar();
+        $conexion = $c->conexion();
+        $sql = "SELECT id_bodega, nombreBodega FROM bodegas WHERE estado = 1 ORDER BY nombreBodega";
+        $result = mysqli_query($conexion, $sql);
+        $lugares = [];
+        while($row = mysqli_fetch_assoc($result)) {
+            $lugares[] = $row;
+        }
+        return $lugares;
+    }
+
+    // Reporte principal de pedido de materiales
+    public function reportePedidoMateriales($desde, $hasta, $proyecto, $obra, $articulo, $lugar) {
+        $c = new conectar();
+        $conexion = $c->conexion();
+        $where = [];
+        if ($desde != '' && $hasta != '') {
+            $where[] = "pm.fecha_solicitud BETWEEN '".mysqli_real_escape_string($conexion, $desde)."' AND '".mysqli_real_escape_string($conexion, $hasta)."'";
+        }
+        if ($proyecto != '') {
+            $where[] = "ot.id_proyecto = '".intval($proyecto)."'";
+        }
+        if ($obra != '') {
+            $where[] = "ot.id_obra = '".intval($obra)."'";
+        }
+        if ($articulo != '') {
+            $where[] = "pmd.id_producto = '".intval($articulo)."'";
+        }
+        if ($lugar != '') {
+            $where[] = "ot.id_bodega_principal = '".intval($lugar)."'";
+        }
+        $whereSql = count($where) > 0 ? ('WHERE '.implode(' AND ', $where)) : '';
+        $sql = "
+            SELECT
+                ot.identificador as id_orden,
+                pr.nombre as proyecto,
+                ob.nombre as obra,
+                pm.fecha_solicitud as fecha,
+                bd.nombreBodega as lugar,
+                ar.nombre as articulo,
+                pmd.cantidad as cantidad
+            FROM pedido_materiales pm
+            INNER JOIN pedido_materiales_detalle pmd ON pm.id_pedido_material = pmd.id_pedido_material
+            INNER JOIN ordenes_trabajo ot ON pm.id_orden = ot.id_orden
+            INNER JOIN proyecto pr ON ot.id_proyecto = pr.id
+            INNER JOIN obra ob ON ot.id_obra = ob.id
+            INNER JOIN bodegas bd ON ot.id_bodega_principal = bd.id_bodega
+            INNER JOIN articulos ar ON pmd.id_producto = ar.id_producto
+            $whereSql
+            ORDER BY ar.nombre ASC, pm.fecha_solicitud DESC, ot.identificador DESC
+        ";
+        $result = mysqli_query($conexion, $sql);
+        $rows = [];
+        $totalGeneral = 0;
+        $lastArticulo = null;
+        $subtotal = 0;
+        while($row = mysqli_fetch_assoc($result)) {
+            $art = $row['articulo'];
+            if ($lastArticulo !== null && $art !== $lastArticulo) {
+                // Fila subtotal del artículo anterior
+                $rows[] = [
+                    'subtotal' => true,
+                    'articulo' => $lastArticulo,
+                    'cantidad' => $subtotal
+                ];
+                $subtotal = 0;
+            }
+            $rows[] = [
+                'id_orden' => $row['id_orden'],
+                'proyecto' => $row['proyecto'],
+                'obra' => $row['obra'],
+                'fecha' => $row['fecha'],
+                'lugar' => $row['lugar'],
+                'articulo' => $row['articulo'],
+                'cantidad' => $row['cantidad']
+            ];
+            $subtotal += floatval($row['cantidad']);
+            $totalGeneral += floatval($row['cantidad']);
+            $lastArticulo = $art;
+        }
+        if ($lastArticulo !== null) {
+            $rows[] = [
+                'subtotal' => true,
+                'articulo' => $lastArticulo,
+                'cantidad' => $subtotal
+            ];
+        }
+        $rows[] = [
+            'total_general' => true,
+            'cantidad' => $totalGeneral
+        ];
+        return $rows;
+    }
 }
 ?>
