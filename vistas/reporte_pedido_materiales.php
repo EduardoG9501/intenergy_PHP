@@ -38,7 +38,7 @@ if (!$acceso) {
     <style>
         .panel-filtros { background: #f5f5f5; border-radius: 6px; padding: 16px 12px; margin-bottom: 25px; box-shadow: 0 1px 3px #ddd; }
         .form-inline .form-control, .form-inline .select2-container { margin-right: 10px; }
-        .table th, .table td { text-align: center; }
+        .table th, .table td { text-align: center; font-size: 11px; padding: 3px 4px; }
         #btnExportarExcel, #btnImprimir { margin-left: 10px; }
         .select2-container { min-width: 200px; }
         .titulo-reporte { text-decoration: underline; color:#1c5d99; font-weight:bold; font-size:20px; margin-bottom:15px; }
@@ -79,11 +79,14 @@ if (!$acceso) {
                         <i class="fa-solid fa-file-excel"></i> Exportar a Excel
                     </button>
                     <button type="button" style="width: 150px; margin-top: 15px;" id="btnImprimir" class="btn btn-info">
-                        <i class="fa-solid fa-file-pdf"></i> Imprimir PDF
+                        <i class="fa-solid fa-file-pdf" style="color: red;"></i> Imprimir PDF
                     </button>
                 </div>
             </div>
         </form>
+    </div>
+    <div style="text-align:right; margin-bottom:0; margin-top:-10px;">
+        <input type="text" id="buscadorPersonalizado" class="form-control" style="display:inline-block; width:250px; margin-top:0; margin-bottom:0;" placeholder="Buscar en el reporte...">
     </div>
     <table id="tablaPedidoMateriales" class="table table-bordered table-striped">
         <thead>
@@ -109,7 +112,43 @@ if (!$acceso) {
     </table>
 </div>
 <script>
+// Variable global para almacenar los datos originales del backend y los filtrados
+var pedidosOriginal = [];
+var pedidosFiltrados = [];
+
 $(document).ready(function(){
+        // Buscador personalizado fuera de DataTables
+        $('#buscadorPersonalizado').on('keyup', function() {
+            let search = $(this).val().toLowerCase();
+            pedidosFiltrados = pedidosOriginal.filter(function(r) {
+                if (r.subtotal || r.total_general) return false;
+                return (
+                    (r.id_orden && r.id_orden.toLowerCase().includes(search)) ||
+                    (r.proyecto && r.proyecto.toLowerCase().includes(search)) ||
+                    (r.obra && r.obra.toLowerCase().includes(search)) ||
+                    (r.fecha && r.fecha.toLowerCase().includes(search)) ||
+                    (r.lugar && r.lugar.toLowerCase().includes(search)) ||
+                    (r.articulo && r.articulo.toLowerCase().includes(search))
+                );
+            });
+            // Recalcular subtotales y total general sobre los filtrados
+            let agrupados = {};
+            let resultado = [];
+            let totalGeneral = 0;
+            pedidosFiltrados.forEach(r => {
+                if (!agrupados[r.articulo]) agrupados[r.articulo] = { subtotal: 0, rows: [] };
+                agrupados[r.articulo].subtotal += parseFloat(r.cantidad);
+                agrupados[r.articulo].rows.push(r);
+                totalGeneral += parseFloat(r.cantidad);
+            });
+            Object.keys(agrupados).forEach(art => {
+                agrupados[art].rows.forEach(row => resultado.push(row));
+                resultado.push({ subtotal: true, articulo: art, cantidad: agrupados[art].subtotal });
+            });
+            resultado.push({ total_general: true, cantidad: totalGeneral });
+            pintarTablaPedidoMateriales(resultado);
+            pedidosFiltrados = resultado;
+        });
     // Inicializar combos
     cargarProyectos();
     cargarObras('');
@@ -127,6 +166,8 @@ $(document).ready(function(){
     $('#formFiltrosPedidoMateriales').on('submit', function(e){
         e.preventDefault();
         buscarPedidoMateriales();
+        // Limpiar el buscador personalizado
+        $('#buscadorPersonalizado').val('');
     });
     $('#btnExportarExcel').on('click', function(){
         exportarExcelPedidoMateriales();
@@ -199,7 +240,9 @@ function buscarPedidoMateriales() {
     };
     $.post('../procesos/reportes/pedido_materiales_reporte.php', datos, function(data){
         let pedidos = JSON.parse(data);
-        pintarTablaPedidoMateriales(pedidos);
+        pedidosOriginal = pedidos; // Guardar para exportaciones
+        pedidosFiltrados = pedidosOriginal;
+        pintarTablaPedidoMateriales(pedidosOriginal);
     });
 }
 
@@ -250,7 +293,79 @@ function pintarTablaPedidoMateriales(pedidos) {
     $tabla.DataTable({
         responsive: true,
         destroy: true,
-        order: []
+        order: [],
+        searching: false // Desactivar búsqueda interna de DataTables
+    });
+    // Reactivar buscador personalizado después de cada render
+    setTimeout(function() {
+        let $input = $('#tablaPedidoMateriales_filter input');
+        if ($input.length && !$input.data('custom-search')) {
+            $input.data('custom-search', true);
+            $input.off('keyup').on('keyup', function() {
+                let search = $(this).val().toLowerCase();
+                pedidosFiltrados = pedidosOriginal.filter(function(r) {
+                    if (r.subtotal || r.total_general) return false;
+                    return (
+                        (r.id_orden && r.id_orden.toLowerCase().includes(search)) ||
+                        (r.proyecto && r.proyecto.toLowerCase().includes(search)) ||
+                        (r.obra && r.obra.toLowerCase().includes(search)) ||
+                        (r.fecha && r.fecha.toLowerCase().includes(search)) ||
+                        (r.lugar && r.lugar.toLowerCase().includes(search)) ||
+                        (r.articulo && r.articulo.toLowerCase().includes(search))
+                    );
+                });
+                // Recalcular subtotales y total general sobre los filtrados
+                let agrupados = {};
+                let resultado = [];
+                let totalGeneral = 0;
+                pedidosFiltrados.forEach(r => {
+                    if (!agrupados[r.articulo]) agrupados[r.articulo] = { subtotal: 0, rows: [] };
+                    agrupados[r.articulo].subtotal += parseFloat(r.cantidad);
+                    agrupados[r.articulo].rows.push(r);
+                    totalGeneral += parseFloat(r.cantidad);
+                });
+                Object.keys(agrupados).forEach(art => {
+                    agrupados[art].rows.forEach(row => resultado.push(row));
+                    resultado.push({ subtotal: true, articulo: art, cantidad: agrupados[art].subtotal });
+                });
+                resultado.push({ total_general: true, cantidad: totalGeneral });
+                pintarTablaPedidoMateriales(resultado);
+                pedidosFiltrados = resultado;
+            });
+        }
+    }, 100);
+    // Buscador personalizado
+    $('#tablaPedidoMateriales_filter input').off('keyup').on('keyup', function() {
+        let search = $(this).val().toLowerCase();
+        // Filtrar pedidosOriginal según el texto buscado en cualquier campo relevante
+        pedidosFiltrados = pedidosOriginal.filter(function(r) {
+            if (r.subtotal || r.total_general) return false;
+            return (
+                (r.id_orden && r.id_orden.toLowerCase().includes(search)) ||
+                (r.proyecto && r.proyecto.toLowerCase().includes(search)) ||
+                (r.obra && r.obra.toLowerCase().includes(search)) ||
+                (r.fecha && r.fecha.toLowerCase().includes(search)) ||
+                (r.lugar && r.lugar.toLowerCase().includes(search)) ||
+                (r.articulo && r.articulo.toLowerCase().includes(search))
+            );
+        });
+        // Recalcular subtotales y total general sobre los filtrados
+        let agrupados = {};
+        let resultado = [];
+        let totalGeneral = 0;
+        pedidosFiltrados.forEach(r => {
+            if (!agrupados[r.articulo]) agrupados[r.articulo] = { subtotal: 0, rows: [] };
+            agrupados[r.articulo].subtotal += parseFloat(r.cantidad);
+            agrupados[r.articulo].rows.push(r);
+            totalGeneral += parseFloat(r.cantidad);
+        });
+        Object.keys(agrupados).forEach(art => {
+            agrupados[art].rows.forEach(row => resultado.push(row));
+            resultado.push({ subtotal: true, articulo: art, cantidad: agrupados[art].subtotal });
+        });
+        resultado.push({ total_general: true, cantidad: totalGeneral });
+        pintarTablaPedidoMateriales(resultado);
+        pedidosFiltrados = resultado;
     });
 }
 
@@ -286,30 +401,31 @@ function exportarTablaAPDF() {
     doc.text(`Artículos: ${articulo}`, 50, filtroY); filtroY += 10;
 
     // Obtener datos de la tabla (solo los visibles/filtrados)
-    const resultados = obtenerDatosDeTablaPedido('tablaPedidoMateriales');
-    // Agrupar por artículo
-    let agrupado = {};
-    let totalGeneral = 0;
-    resultados.forEach(r => {
-        let art = r.campo6;
-        if (!agrupado[art]) agrupado[art] = [];
-        agrupado[art].push(r);
-    });
+    // Usar los datos del backend igual que el grid
     let body = [];
-    Object.keys(agrupado).forEach(articulo => {
-        let subtotal = 0;
-        agrupado[articulo].forEach(r => {
+    // Usar los filtrados si hay búsqueda, si no los originales
+    let datos = pedidosFiltrados && pedidosFiltrados.length > 0 ? pedidosFiltrados : pedidosOriginal;
+    datos.forEach(r => {
+        if (r.subtotal) {
             body.push([
-                r.campo1, r.campo2, r.campo3, r.campo4, r.campo5, r.campo6, r.campo7
+                'TOTAL', '', '', '', '', `TOTALES ${r.articulo}:`, parseFloat(r.cantidad).toFixed(2)
             ]);
-            subtotal += parseFloat(r.campo7) || 0;
-            totalGeneral += parseFloat(r.campo7) || 0;
-        });
-        body.push([
-            '', '', '', '', '', `TOTALES ${articulo}:`, subtotal.toFixed(2)
-        ]);
+        } else if (r.total_general) {
+            body.push(['', '', '', '', '', 'TOTALES GENERALES:', parseFloat(r.cantidad).toFixed(2)]);
+        } else {
+            let row = [
+                r.id_orden ?? '',
+                r.proyecto ?? '',
+                r.obra ?? '',
+                r.fecha ?? '',
+                r.lugar ?? '',
+                r.articulo ?? '',
+                parseFloat(r.cantidad).toFixed(2)
+            ];
+            // row._highlight eliminado, ya no se resalta en amarillo
+            body.push(row);
+        }
     });
-    body.push(['', '', '', '', '', 'TOTAL GENERAL:', totalGeneral.toFixed(2)]);
 
     doc.autoTable({
         head: [[
@@ -318,27 +434,32 @@ function exportarTablaAPDF() {
         body: body,
         startY: filtroY,
         styles: {
-            fontSize: 10,
-            cellPadding: 5,
-            fillColor: [230, 240, 255]
+            fontSize: 11,
+            cellPadding: 3,
+            halign: 'center',
+            valign: 'middle',
         },
         headStyles: {
             fillColor: [41, 134, 197],
             textColor: [255, 255, 255],
-            fontStyle: 'bold'
+            fontStyle: 'bold',
+            halign: 'center',
+            fontSize: 11
         },
         alternateRowStyles: {
-            fillColor: [245, 245, 245]
+            fillColor: [230, 240, 255]
         },
         didParseCell: function(data) {
             if (data.row.index !== undefined && data.row.raw && data.row.raw[5] && data.row.raw[5].startsWith('TOTALES')) {
                 data.cell.styles.fontStyle = 'bold';
                 data.cell.styles.fillColor = [227, 242, 253];
+                data.cell.styles.halign = 'right';
             }
-            if (data.row.index !== undefined && data.row.raw && data.row.raw[5] === 'TOTAL GENERAL:') {
+            if (data.row.index !== undefined && data.row.raw && data.row.raw[5] === 'TOTALES GENERALES:') {
                 data.cell.styles.fontStyle = 'bold';
                 data.cell.styles.fillColor = [41, 134, 197];
                 data.cell.styles.textColor = [255,255,255];
+                data.cell.styles.halign = 'right';
             }
         },
         margin: { left: 40, right: 40 }
@@ -369,33 +490,11 @@ function obtenerDatosDeTablaPedido(tablaId) {
 }
 
 function exportarExcelPedidoMateriales() {
-    var table = document.getElementById('tablaPedidoMateriales');
-    var rows = Array.from(table.querySelectorAll('tbody tr'));
-    var headerCells = Array.from(table.querySelectorAll('thead tr th'));
-    var headers = headerCells.map(cell => cell.innerText);
-    // Agrupar por artículo
-    let agrupado = {};
-    let totalGeneral = 0;
-    rows.forEach(row => {
-        var cols = Array.from(row.cells).map(cell => cell.innerText);
-        let art = cols[5];
-        if (!agrupado[art]) agrupado[art] = [];
-        agrupado[art].push(cols);
-    });
-    var bodyRows = [];
-    Object.keys(agrupado).forEach(articulo => {
-        let subtotal = 0;
-        agrupado[articulo].forEach(cols => {
-            bodyRows.push(cols);
-            if(cols.length === 7 && !isNaN(parseFloat(cols[6]))) {
-                subtotal += parseFloat(cols[6]) || 0;
-                totalGeneral += parseFloat(cols[6]) || 0;
-            }
-        });
-        let subtotalRow = ["", "", "", "", "", `TOTALES ${articulo}:`, subtotal.toFixed(2)];
-        bodyRows.push(subtotalRow);
-    });
-    let totalRow = ["", "", "", "", "", "TOTAL GENERAL:", totalGeneral.toFixed(2)];
+    // Usar los datos del backend igual que el grid
+    var headers = [
+        'ID ORDEN', 'PROYECTO', 'NOMBRE DE LA OBRA', 'FECHA', 'LUGAR', 'ARTICULO', 'CANTIDAD'
+    ];
+    var pedidos = (pedidosFiltrados && pedidosFiltrados.length > 0) ? pedidosFiltrados : pedidosOriginal;
     var workbook = new ExcelJS.Workbook();
     var worksheet = workbook.addWorksheet('PedidoMateriales');
     let headerRow = worksheet.addRow(headers);
@@ -412,22 +511,47 @@ function exportarExcelPedidoMateriales() {
             bottom: {style:'thin'}, right: {style:'thin'}
         };
     });
-    bodyRows.forEach(row => {
+    pedidos.forEach(r => {
+        let row;
+        if (r.subtotal) {
+            row = ['TOTAL', '', '', '', '', `TOTALES ${r.articulo}:`, parseFloat(r.cantidad).toFixed(2)];
+        } else if (r.total_general) {
+            row = ['', '', '', '', '', 'TOTALES GENERALES:', parseFloat(r.cantidad).toFixed(2)];
+        } else {
+            row = [
+                r.id_orden ?? '',
+                r.proyecto ?? '',
+                r.obra ?? '',
+                r.fecha ?? '',
+                r.lugar ?? '',
+                r.articulo ?? '',
+                parseFloat(r.cantidad).toFixed(2)
+            ];
+        }
         let excelRow = worksheet.addRow(row);
+        excelRow.eachCell((cell, colNumber) => {
+            cell.font = { size: 11, name: 'Arial', bold: false };
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.border = {
+                top: {style:'thin'}, left: {style:'thin'},
+                bottom: {style:'thin'}, right: {style:'thin'}
+            };
+        });
         if(row[5] && row[5].startsWith('TOTALES')) {
             excelRow.eachCell(cell => {
-                cell.font = { bold: true };
+                cell.font = { size: 11, name: 'Arial', bold: true };
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: "FFE3F2FD" } };
+                cell.alignment = { horizontal: 'right', vertical: 'middle' };
             });
         }
-        if(row[5] === 'TOTAL GENERAL:') {
+        if(row[5] && row[5].startsWith('TOTALES GENERALES')) {
             excelRow.eachCell(cell => {
-                cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+                cell.font = { size: 11, name: 'Arial', bold: true, color: { argb: "FFFFFFFF" } };
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: "FF2986C5" } };
+                cell.alignment = { horizontal: 'right', vertical: 'middle' };
             });
         }
     });
-    worksheet.addRow(totalRow);
     worksheet.columns.forEach(function(column, i) {
         let maxLength = 10;
         column.eachCell({ includeEmpty: true }, function(cell) {

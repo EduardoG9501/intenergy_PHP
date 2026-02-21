@@ -90,7 +90,7 @@ if (!$acceso) {
                     <i class="fa-solid fa-file-excel"></i> Exportar a Excel
                 </button>
                 <button type="button" style="width: 150px; margin-top: 15px;" id="btnImprimir" class="btn btn-info">
-                    <i class="fa-solid fa-file-pdf"></i> Imprimir PDF
+                    <i class="fa-solid fa-file-pdf" style="color: red;"></i> Imprimir PDF
                 </button>
             </div>
         </div>
