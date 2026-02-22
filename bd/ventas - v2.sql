@@ -620,7 +620,8 @@ INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre)
 VALUES ('REPORTES','INFORME DISPONIBILIDAD POR BODEGAS','INFORME DISPONIBILIDAD POR BODEGAS','reporte_disponibilidad_bodega.php','fa fa-chart-bar'); 
 INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre) 
 VALUES ('REPORTES','INFORME DE PEDIDO DE MATERIALES','INFORME DE PEDIDO DE MATERIALES','reporte_pedido_materiales.php','fa fa-chart-bar'); 
-
+INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre) 
+VALUES ('REPORTES','REPORTE DE EJECUSION DE OBRA','REPORTE DE EJECUSION DE OBRA','reporte_ejecucion_obra.php','fa fa-chart-bar');
 /*ADMIN*/
 INSERT INTO menu (menu_padre,menu_hijo,descripcion,opcion,icono_padre,icono_hijo) 
 VALUES ('ADMIN','USUARIOS','USUARIOS','usuarios.php','fa fa-wrench','glyphicon glyphicon-user'); 
