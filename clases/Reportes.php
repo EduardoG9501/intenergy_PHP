@@ -190,7 +190,8 @@ class Reporte {
                     LEFT JOIN bodegas bs ON it.id_bodega_secundaria = bs.id_bodega
                     LEFT JOIN informe_trabajo_empleado ite ON ite.id_informe = it.id_informe
                     INNER JOIN empleados e ON ite.id_empleado = e.id_empleados
-                    INNER JOIN ordenes_trabajo ot on it.id_orden = ot.id_orden
+                    INNER JOIN ejecucion_obra eo on it.id_ejecucion_obra = eo.id_ejecucion_obra
+                    INNER JOIN ordenes_trabajo ot on ot.id_orden = eo.id_orden
                     $where $extra
                     ORDER BY it.fecha DESC, it.id_informe DESC";
             $rs = mysqli_query($conexion, $sql);
@@ -211,7 +212,8 @@ class Reporte {
                     LEFT JOIN bodegas bs ON it.id_bodega_secundaria = bs.id_bodega
                     LEFT JOIN informe_trabajo_empleado_externo itee ON itee.id_informe = it.id_informe
                     INNER JOIN empleados ee ON itee.id_empleado_externo = ee.id_empleados
-                    INNER JOIN ordenes_trabajo ot on it.id_orden = ot.id_orden
+                    INNER JOIN ejecucion_obra eo on it.id_ejecucion_obra = eo.id_ejecucion_obra
+                    INNER JOIN ordenes_trabajo ot on ot.id_orden = eo.id_orden
                     $where $extra
                     ORDER BY it.fecha DESC, it.id_informe DESC";
             $rs = mysqli_query($conexion, $sql);
@@ -233,7 +235,8 @@ class Reporte {
                     LEFT JOIN bodegas bs ON it.id_bodega_secundaria = bs.id_bodega
                     LEFT JOIN informe_trabajo_articulo ita ON ita.id_informe = it.id_informe
                     INNER JOIN articulos a ON ita.id_producto = a.id_producto
-                    INNER JOIN ordenes_trabajo ot on it.id_orden = ot.id_orden
+                    INNER JOIN ejecucion_obra eo on it.id_ejecucion_obra = eo.id_ejecucion_obra
+                    INNER JOIN ordenes_trabajo ot on ot.id_orden = eo.id_orden
                     $where $extra
                     ORDER BY it.fecha DESC, it.id_informe DESC";
             $rs = mysqli_query($conexion, $sql);
@@ -347,7 +350,8 @@ class Reporte {
             FROM informe_trabajo it
             LEFT JOIN bodegas bp ON it.id_bodega_principal = bp.id_bodega
             LEFT JOIN bodegas bs ON it.id_bodega_secundaria = bs.id_bodega
-            LEFT JOIN ordenes_trabajo ot ON it.id_orden = ot.id_orden
+            INNER JOIN ejecucion_obra eo on it.id_ejecucion_obra = eo.id_ejecucion_obra
+           INNER JOIN ordenes_trabajo ot on ot.id_orden = eo.id_orden
             $where
             ORDER BY it.fecha DESC, it.id_informe DESC
         ";
@@ -525,6 +529,150 @@ class Reporte {
             'cantidad' => $totalGeneral
         ];
         return $rows;
+    }
+    // Reporte de Materiales Ejecución de Obra
+    public function reporteMaterialesEjecucionObra($filtros) {
+        $c = new conectar();
+        $conexion = $c->conexion();
+        $w = [];
+        if (!empty($filtros['proyecto'])) {
+            $w[] = "p.id = '".intval($filtros['proyecto'])."'";
+        }
+        if (!empty($filtros['obra'])) {
+            $w[] = "ob.id = '".intval($filtros['obra'])."'";
+        }
+        if (!empty($filtros['fecha_inicial'])) {
+            $w[] = "eo.fecha_solicitud >= '".mysqli_real_escape_string($conexion, $filtros['fecha_inicial'])."'";
+        }
+        if (!empty($filtros['fecha_final'])) {
+            $w[] = "eo.fecha_solicitud <= '".mysqli_real_escape_string($conexion, $filtros['fecha_final'])."'";
+        }
+        if (!empty($filtros['bodega'])) {
+            $w[] = "b.id_bodega = '".intval($filtros['bodega'])."'";
+        }
+        $where = count($w) ? "WHERE ".implode(" AND ", $w) : "";
+
+        $sql = "SELECT o.identificador, p.nombre AS proyecto, ob.nombre AS obra, eo.fecha_solicitud AS fecha, b.nombreBodega AS lugar, a.nombre AS articulo, edmu.cantidad AS cantidad, edmu.Contabilizado AS contabilizado
+            FROM ejecucion_obra eo
+            INNER JOIN ordenes_trabajo o ON eo.id_orden = o.id_orden
+            INNER JOIN ejecucion_obra_detalle_materiales_utilizar edmu ON eo.id_ejecucion_obra = edmu.id_ejecucion_obra
+            INNER JOIN articulos a ON edmu.id_producto = a.id_producto
+            INNER JOIN bodegas b ON edmu.id_bodega_lugar = b.id_bodega
+            INNER JOIN proyecto p ON o.id_proyecto = p.id
+            INNER JOIN obra ob ON o.id_obra = ob.id
+            $where
+            ORDER BY a.nombre ASC, eo.fecha_solicitud DESC, o.identificador DESC";
+        $result = mysqli_query($conexion, $sql);
+        $rows = [];
+        $totalGeneral = 0;
+        $lastArticulo = null;
+        $subtotal = 0;
+        foreach ($result as $row) {
+            $row['contabilizado'] = ($row['contabilizado'] == 1) ? 'SI' : 'NO';
+            $art = $row['articulo'];
+            if ($lastArticulo !== null && $art !== $lastArticulo) {
+                // Fila subtotal del artículo anterior
+                $rows[] = [
+                    'subtotal' => true,
+                    'articulo' => $lastArticulo,
+                    'cantidad' => $subtotal
+                ];
+                $subtotal = 0;
+            }
+            $rows[] = $row;
+            $subtotal += floatval($row['cantidad']);
+            $totalGeneral += floatval($row['cantidad']);
+            $lastArticulo = $art;
+        }
+        if ($lastArticulo !== null) {
+            $rows[] = [
+                'subtotal' => true,
+                'articulo' => $lastArticulo,
+                'cantidad' => $subtotal
+            ];
+        }
+        $rows[] = [
+            'total_general' => true,
+            'cantidad' => $totalGeneral
+        ];
+        return $rows;
+    }
+
+    // Reporte de Horas de Trabajo Ejecución de Obra
+    public function reporteHorasTrabajoEjecucionObra($filtros) {
+        $c = new conectar();
+        $conexion = $c->conexion();
+        $w = [];
+        if (!empty($filtros['proyecto'])) {
+            $w[] = "p.id = '".intval($filtros['proyecto'])."'";
+        }
+        if (!empty($filtros['obra'])) {
+            $w[] = "ob.id = '".intval($filtros['obra'])."'";
+        }
+        if (!empty($filtros['fecha_inicial'])) {
+            $w[] = "eo.fecha_solicitud >= '".mysqli_real_escape_string($conexion, $filtros['fecha_inicial'])."'";
+        }
+        if (!empty($filtros['fecha_final'])) {
+            $w[] = "eo.fecha_solicitud <= '".mysqli_real_escape_string($conexion, $filtros['fecha_final'])."'";
+        }
+        $where = count($w) ? "WHERE ".implode(" AND ", $w) : "";
+
+        $sql = "SELECT ot.id_orden, p.nombre AS proyecto, ob.nombre AS obra, eo.fecha_solicitud AS fecha, b.nombreBodega AS lugar, e.nombres_apellidos AS responsable, htd.hora_entrada, htd.hora_salida, htd.cantidad_horas_normal AS h_normales, htd.cantidad_horas_extra AS h_extras, htd.cantidad_horas_extraordinaria AS h_extraordinarias
+                FROM ejecucion_obra eo
+                INNER JOIN ordenes_trabajo ot ON eo.id_orden = ot.id_orden
+                INNER JOIN proyecto p ON ot.id_proyecto = p.id
+                INNER JOIN obra ob ON ot.id_obra = ob.id
+                INNER JOIN bodegas b ON ot.id_bodega_principal = b.id_bodega
+                INNER JOIN horas_trabajo_diario_detalle htd ON eo.id_ejecucion_obra = htd.id_ejecucion_obra
+                INNER JOIN empleados e ON htd.id_empleado = e.id_empleados
+                $where
+                ORDER BY eo.id_ejecucion_obra DESC";
+        $result = mysqli_query($conexion, $sql);
+        $horas = [];
+        while ($row = mysqli_fetch_assoc($result)) {
+            $horas[] = $row;
+        }
+        return $horas;
+    }
+
+    // Reporte de Informes Diarios Ejecución de Obra
+    public function reporteInformesDiariosEjecucionObra($filtros) {
+        $c = new conectar();
+        $conexion = $c->conexion();
+        $w = [];
+        if (!empty($filtros['proyecto'])) {
+            $w[] = "p.id = '".intval($filtros['proyecto'])."'";
+        }
+        if (!empty($filtros['obra'])) {
+            $w[] = "ob.id = '".intval($filtros['obra'])."'";
+        }
+        if (!empty($filtros['fecha_inicial'])) {
+            $w[] = "eo.fecha_solicitud >= '".mysqli_real_escape_string($conexion, $filtros['fecha_inicial'])."'";
+        }
+        if (!empty($filtros['fecha_final'])) {
+            $w[] = "eo.fecha_solicitud <= '".mysqli_real_escape_string($conexion, $filtros['fecha_final'])."'";
+        }
+        $where = count($w) ? "WHERE ".implode(" AND ", $w) : "";
+
+        $sql = "SELECT it.id_informe, ob.nombre AS obra, ot.identificador AS orden_trabajo, it.fecha,
+            bp.nombreBodega AS lugar,
+            bs.nombreBodega AS ubicacion,
+            it.observacion, it.descripcion
+            FROM informe_trabajo it
+            INNER JOIN ejecucion_obra eo ON it.id_ejecucion_obra = eo.id_ejecucion_obra
+            INNER JOIN ordenes_trabajo ot ON eo.id_orden = ot.id_orden
+            INNER JOIN proyecto p ON ot.id_proyecto = p.id
+            INNER JOIN obra ob ON ot.id_obra = ob.id
+            LEFT JOIN bodegas bs ON it.id_bodega_secundaria = bs.id_bodega
+             LEFT JOIN bodegas bp ON it.id_bodega_principal = bp.id_bodega
+            $where
+            ORDER BY it.id_informe DESC";
+        $result = mysqli_query($conexion, $sql);
+        $informes = [];
+        while ($row = mysqli_fetch_assoc($result)) {
+            $informes[] = $row;
+        }
+        return $informes;
     }
 }
 ?>

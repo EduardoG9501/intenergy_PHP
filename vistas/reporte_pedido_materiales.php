@@ -1,15 +1,3 @@
-<script>
-// Utilidad para convertir imagen a base64 (para el logo en PDF)
-function getBase64Image(img) {
-    var canvas = document.createElement("canvas");
-    canvas.width = img.naturalWidth || img.width;
-    canvas.height = img.naturalHeight || img.height;
-    var ctx = canvas.getContext("2d");
-    ctx.drawImage(img, 0, 0);
-    var dataURL = canvas.toDataURL("image/png");
-    return dataURL.replace(/^data:image\/png;base64,/, "");
-}
-</script>
 <?php
 ini_set('session.gc_maxlifetime', 14400);
 session_set_cookie_params(14400);
@@ -112,6 +100,15 @@ if (!$acceso) {
     </table>
 </div>
 <script>
+function getBase64Image(img) {
+    var canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth || img.width;
+    canvas.height = img.naturalHeight || img.height;
+    var ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+    var dataURL = canvas.toDataURL("image/png");
+    return dataURL.replace(/^data:image\/png;base64,/, "");
+}
 // Variable global para almacenar los datos originales del backend y los filtrados
 var pedidosOriginal = [];
 var pedidosFiltrados = [];
