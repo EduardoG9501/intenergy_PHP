@@ -6,7 +6,7 @@ if(isset($_SESSION['usuario'])){
 require_once "../clases/Conexion.php";
 require_once '../clases/Usuarios.php';
 $usuarioObj = new usuarios();
-$acceso = $usuarioObj->usuarioTieneAcceso($_SESSION['usuario'], "INFORME PEDIDO DE MATERIALES");
+$acceso = $usuarioObj->usuarioTieneAcceso($_SESSION['usuario'], "INFORME DE PEDIDO DE MATERIALES");
 if (!$acceso) {
     header("location:../index.php");
     exit();
