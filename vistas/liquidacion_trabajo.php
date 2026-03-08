@@ -81,11 +81,25 @@ if (isset($_SESSION['usuario'])) {
             margin-bottom: 4px;
         }
         .btn-agregar-imagen {
-            margin-top: 30px;
-            width: 100%;
+            margin-top: 0;
+            width: 220px;
             display: inline-block;
             text-align: center;
             cursor: pointer;
+        }
+        .seccion-imagenes-adjuntas {
+            border: 1px solid #cfe3f6;
+            border-radius: 6px;
+            background: #fafdff;
+            margin-top: 10px;
+            padding: 8px;
+        }
+        .titulo-imagenes-adjuntas {
+            font-weight: bold;
+            color: #1c5d99;
+            margin-bottom: 8px;
+            border-bottom: 1px dashed #b8d6ef;
+            padding-bottom: 4px;
         }
     </style>
 </head>
@@ -140,20 +154,22 @@ if (isset($_SESSION['usuario'])) {
 
     <div class="caja-observacion">
         <div class="titulo-caja">IMPORTANTE:</div>
-        <div class="row" style="margin: 0;">
-            <div class="col-sm-9" style="padding-left:0;">
-                <textarea id="txtImportante" class="form-control" rows="3" placeholder="Ingrese observaciones importantes..."></textarea>
-            </div>
-            <div class="col-sm-3" style="padding-right:0; text-align:right;">
-                <input type="file" id="imagenes_liquidacion" class="form-control" accept="image/*" multiple style="position:absolute; left:-9999px; width:1px; height:1px; opacity:0;">
-                <label for="imagenes_liquidacion" id="btnAgregarImagen" class="btn btn-default btn-agregar-imagen">+ Agregar imagen</label>
-            </div>
+        <div>
+            <textarea id="txtImportante" class="form-control" rows="4" placeholder="Ingrese observaciones importantes..."></textarea>
         </div>
-        <div id="listaImagenesPendientes"></div>
-        <div id="previewImagenesLiquidacion"></div>
+
+        <div class="seccion-imagenes-adjuntas">
+            <div class="titulo-imagenes-adjuntas">IMÁGENES ADJUNTAS:</div>
+            <div style="text-align:right; margin-bottom:8px;">
+                <input type="file" id="imagenes_liquidacion" class="form-control" accept="image/*" multiple style="position:absolute; left:-9999px; width:1px; height:1px; opacity:0;">
+                <label for="imagenes_liquidacion" id="btnAgregarImagen" class="btn btn-primary  btn-agregar-imagen">+ Agregar imagen</label>
+            </div>
+            <div id="listaImagenesPendientes"></div>
+            <div id="previewImagenesLiquidacion"></div>
+        </div>
     </div>
 
-    <div style="text-align:right; margin-bottom:0; margin-top:-10px;">
+    <div style="border-top:1px solid #d9e8f5; margin-top:10px; padding-top:10px; text-align:right; margin-bottom:0;">
         <input type="text" id="buscadorMateriales" class="form-control" style="display:inline-block; width:250px; margin-top:0; margin-bottom:0;" placeholder="Buscar en Materiales...">
     </div>
 

@@ -2,6 +2,7 @@
     var endpoint = window.REPORTE_EJECUCION_ENDPOINT || '../procesos/reportes/liquidacion_trabajo.php';
     var idLiquidacionActual = 0;
     var imagenesPendientes = [];
+    var timerRecargaFiltros = null;
 
     function safeParse(data) {
         try {
@@ -84,6 +85,23 @@
             $('#txtImportante').val(res.data.importante || '');
             renderImagenes(res.data.imagenes || []);
         });
+    }
+
+    function recargarGridsReporte() {
+        if (typeof cargarMateriales === 'function') {
+            cargarMateriales();
+        }
+        if (typeof cargarHoras === 'function') {
+            cargarHoras();
+        }
+        if (typeof cargarInformes === 'function') {
+            cargarInformes();
+        }
+    }
+
+    function recargarTodoPorFiltros() {
+        recargarGridsReporte();
+        cargarLiquidacion();
     }
 
     function guardarLiquidacion() {
@@ -174,14 +192,15 @@
         });
 
         $('#formFiltrosEjecucionObra').on('submit', function() {
-            setTimeout(cargarLiquidacion, 250);
+            setTimeout(recargarTodoPorFiltros, 250);
         });
 
         $('#proyecto, #obra, #bodega, #fecha_inicial, #fecha_final').on('change', function() {
-            setTimeout(cargarLiquidacion, 150);
+            clearTimeout(timerRecargaFiltros);
+            timerRecargaFiltros = setTimeout(recargarTodoPorFiltros, 250);
         });
 
         renderImagenesPendientes();
-        setTimeout(cargarLiquidacion, 350);
+        setTimeout(recargarTodoPorFiltros, 350);
     });
 })();
