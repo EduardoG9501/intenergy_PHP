@@ -12,7 +12,7 @@ if (!$acceso) {
     header("location:../index.php");
     exit();
 } 
-?>
+?> 
 <!DOCTYPE html>
 <html>
 <head>

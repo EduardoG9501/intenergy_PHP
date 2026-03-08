@@ -1,16 +1,17 @@
 <?php
-ini_set('session.gc_maxlifetime', 14400);
-session_set_cookie_params(14400);
-session_start();
+ini_set('session.gc_maxlifetime', 14400); // 4 horas en segundos
+ session_set_cookie_params(14400);         // 4 horas para la cookie de sesión
+ session_start();
 if(isset($_SESSION['usuario'])){
-require_once "../clases/Conexion.php";
+/*HABILITAR ACCESO AL MENU*/ 	
+require_once "../clases/Conexion.php"; 
 require_once '../clases/Usuarios.php';
-$usuarioObj = new usuarios();
-$acceso = $usuarioObj->usuarioTieneAcceso($_SESSION['usuario'], "REPORTE DE EJECUSION DE OBRA");
+$usuarioObj = new usuarios();                                    
+$acceso = $usuarioObj->usuarioTieneAcceso($_SESSION['usuario'], "REPORTE DE EJECUCION DE OBRA");
 if (!$acceso) {
     header("location:../index.php");
     exit();
-}
+} 
 ?>
 <!DOCTYPE html>
 <html>
