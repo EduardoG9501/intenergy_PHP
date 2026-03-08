@@ -9,6 +9,7 @@ var informesOriginal = [], informesFiltrados = [];
 var reporteEndpoint = window.REPORTE_EJECUCION_ENDPOINT || '../procesos/reportes/reporte_ejecucion_obra.php';
 var reporteTitulo = window.REPORTE_EJECUCION_TITULO || 'REPORTE DE EJECUCIÓN DE OBRA';
 var reporteArchivoBase = window.REPORTE_EJECUCION_ARCHIVO || 'reporte_ejecucion_obra';
+var esLiquidacionTrabajo = (reporteArchivoBase === 'liquidacion_trabajo');
 
 $(document).ready(function(){
     cargarProyectos();
@@ -37,7 +38,7 @@ $(document).ready(function(){
         exportarPDFEjecucionObra();
     });
     // Exportar PDF completo
-    function exportarPDFEjecucionObra() {
+    async function exportarPDFEjecucionObra() {
         // Requiere jsPDF y jsPDF-autotable
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('landscape', 'pt', 'A4');
@@ -67,17 +68,12 @@ $(document).ready(function(){
         const proyecto = $('#proyecto option:selected').text() || 'Todos';
         const obra = $('#obra option:selected').text() || 'Todos';
         const lugar = $('#bodega option:selected').text() || 'Todos';
-        const manoObra = ($('#txtManoObra').val() || '').trim();
-        const importante = ($('#txtImportante').val() || '').trim();
+        const manoObra = esLiquidacionTrabajo ? ($('#txtManoObra').val() || '').trim() : '';
+        const importante = esLiquidacionTrabajo ? ($('#txtImportante').val() || '').trim() : '';
+        const imagenesLiquidacion = esLiquidacionTrabajo ? await obtenerImagenesLiquidacionBase64() : [];
         doc.text(`Proyecto: ${proyecto}`, 50, filtroY); filtroY += 16;
         doc.text(`Nombre de la Obra: ${obra}`, 50, filtroY); filtroY += 16;
         doc.text(`Lugar: ${lugar}`, 50, filtroY); filtroY += 16;
-        if (manoObra) {
-            doc.text(`Mano de Obra: ${manoObra}`, 50, filtroY); filtroY += 16;
-        }
-        if (importante) {
-            doc.text(`Importante: ${importante}`, 50, filtroY); filtroY += 16;
-        }
         doc.text('Artículos: Todos', 50, filtroY); filtroY += 10;
 
         // Materiales
@@ -218,6 +214,95 @@ $(document).ready(function(){
             headStyles: headerStyles,
             alternateRowStyles: altRowStyles,
         });
+
+        // LIQUIDACION AL FINAL (solo para liquidación de trabajo)
+        if (esLiquidacionTrabajo) {
+            filtroY = doc.lastAutoTable.finalY + 16;
+
+            if (filtroY > doc.internal.pageSize.getHeight() - 120) {
+                doc.addPage();
+                filtroY = 50;
+            }
+
+            // Encabezado destacado de sección
+            doc.setFillColor(217, 237, 247);
+            doc.setDrawColor(154, 207, 234);
+            doc.roundedRect(45, filtroY - 12, pageWidth - 90, 22, 2, 2, 'FD');
+            doc.setFontSize(12);
+            doc.setTextColor(23, 82, 130);
+            doc.text('SECCION DE LIQUIDACION DE TRABAJO', 50, filtroY + 2);
+            const anchoTituloLiquidacion = doc.getTextWidth('SECCION DE LIQUIDACION DE TRABAJO');
+            doc.setLineWidth(1.2);
+            doc.line(50, filtroY + 5, 50 + anchoTituloLiquidacion, filtroY + 5);
+            doc.setTextColor(44, 62, 80);
+            filtroY += 24;
+
+            if (manoObra) {
+                const manoObraLineas = doc.splitTextToSize(manoObra, pageWidth - 120);
+                doc.setFontSize(11);
+                doc.text('MANO DE OBRA:', 50, filtroY);
+                const anchoManoObra = doc.getTextWidth('MANO DE OBRA:');
+                doc.setLineWidth(1);
+                doc.line(50, filtroY + 3, 50 + anchoManoObra, filtroY + 3);
+                filtroY += 14;
+                doc.text(manoObraLineas, 50, filtroY);
+                filtroY += (manoObraLineas.length * 12) + 8;
+            }
+
+            if (importante) {
+                const importanteLineas = doc.splitTextToSize(importante, pageWidth - 120);
+                doc.setFontSize(11);
+                doc.text('IMPORTANTE:', 50, filtroY);
+                const anchoImportante = doc.getTextWidth('IMPORTANTE:');
+                doc.setLineWidth(1);
+                doc.line(50, filtroY + 3, 50 + anchoImportante, filtroY + 3);
+                filtroY += 14;
+                doc.text(importanteLineas, 50, filtroY);
+                filtroY += (importanteLineas.length * 12) + 8;
+            }
+
+            if (imagenesLiquidacion.length > 0) {
+                const imgAncho = 120;
+                const imgAlto = 90;
+                const margenX = 20;
+
+                if (filtroY + imgAlto + 30 > doc.internal.pageSize.getHeight() - 60) {
+                    doc.addPage();
+                    filtroY = 50;
+                }
+
+                doc.setFontSize(11);
+                doc.text('SECCION DE IMAGENES ADJUNTADAS:', 50, filtroY);
+                const anchoImagenes = doc.getTextWidth('SECCION DE IMAGENES ADJUNTADAS:');
+                doc.setLineWidth(1);
+                doc.line(50, filtroY + 3, 50 + anchoImagenes, filtroY + 3);
+                filtroY += 12;
+
+                let col = 0;
+                for (let i = 0; i < imagenesLiquidacion.length; i++) {
+                    const posX = 50 + ((imgAncho + margenX) * col);
+                    if (filtroY + imgAlto > doc.internal.pageSize.getHeight() - 60) {
+                        doc.addPage();
+                        filtroY = 50;
+                        doc.setFontSize(11);
+                        doc.text('SECCION DE IMAGENES ADJUNTADAS (CONT.):', 50, filtroY);
+                        const anchoImagenesCont = doc.getTextWidth('SECCION DE IMAGENES ADJUNTADAS (CONT.):');
+                        doc.line(50, filtroY + 3, 50 + anchoImagenesCont, filtroY + 3);
+                        filtroY += 12;
+                        col = 0;
+                    }
+                    doc.addImage(imagenesLiquidacion[i], 'JPEG', posX, filtroY, imgAncho, imgAlto);
+                    col++;
+                    if (col === 5) {
+                        col = 0;
+                        filtroY += imgAlto + 10;
+                    }
+                }
+                if (col !== 0) {
+                    filtroY += imgAlto + 10;
+                }
+            }
+        }
         // ...el resto del código permanece igual...
         const fecha = new Date().toLocaleString();
         doc.setFontSize(10);
@@ -237,8 +322,35 @@ $(document).ready(function(){
         return canvas.toDataURL("image/png");
     }
 
+    async function imageUrlToDataUrl(url) {
+        try {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            return await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async function obtenerImagenesLiquidacionBase64() {
+        const imagenes = [];
+        const nodos = document.querySelectorAll('#previewImagenesLiquidacion img');
+        for (let i = 0; i < nodos.length; i++) {
+            const src = nodos[i].getAttribute('src');
+            if (!src) continue;
+            const dataUrl = await imageUrlToDataUrl(src);
+            if (dataUrl) imagenes.push(dataUrl);
+        }
+        return imagenes;
+    }
+
     // Exportar Excel completo
-    function exportarExcelEjecucionObra() {
+    async function exportarExcelEjecucionObra() {
         // Requiere ExcelJS
         const workbook = new ExcelJS.Workbook();
         const sheet = workbook.addWorksheet('Ejecución de Obra');
@@ -248,12 +360,6 @@ $(document).ready(function(){
         sheet.addRow([`Proyecto: ${$('#proyecto option:selected').text()}`]);
         sheet.addRow([`Nombre de la Obra: ${$('#obra option:selected').text()}`]);
         sheet.addRow([`Lugar: ${$('#bodega option:selected').text()}`]);
-        if ($('#txtManoObra').length && ($('#txtManoObra').val() || '').trim() !== '') {
-            sheet.addRow([`Mano de Obra: ${$('#txtManoObra').val()}`]);
-        }
-        if ($('#txtImportante').length && ($('#txtImportante').val() || '').trim() !== '') {
-            sheet.addRow([`Importante: ${$('#txtImportante').val()}`]);
-        }
         sheet.addRow([]);
         // Título y línea solo una vez
         let matTitle = sheet.addRow(['MATERIALES A UTILIZAR']);
@@ -346,6 +452,51 @@ $(document).ready(function(){
         informesOriginal.forEach(r => {
             sheet.addRow([r.id_informe ?? '', r.obra ?? '', r.orden_trabajo ?? '', r.fecha ?? '', r.lugar ?? '', r.ubicacion ?? '', r.observacion ?? '']);
         });
+
+        // LIQUIDACION AL FINAL (solo para liquidación de trabajo)
+        if (esLiquidacionTrabajo && $('#txtManoObra').length && ($('#txtManoObra').val() || '').trim() !== '') {
+            sheet.addRow([]);
+            let tituloManoObra = sheet.addRow(['MANO DE OBRA']);
+            tituloManoObra.font = { bold: true, size: 12 };
+            sheet.addRow([$('#txtManoObra').val()]);
+        }
+
+        if (esLiquidacionTrabajo && $('#txtImportante').length && ($('#txtImportante').val() || '').trim() !== '') {
+            sheet.addRow([]);
+            let tituloImportante = sheet.addRow(['IMPORTANTE']);
+            tituloImportante.font = { bold: true, size: 12 };
+            sheet.addRow([$('#txtImportante').val()]);
+        }
+
+        // IMAGENES ADJUNTADAS AL FINAL (solo liquidación)
+        const imagenesLiquidacion = esLiquidacionTrabajo ? await obtenerImagenesLiquidacionBase64() : [];
+        if (esLiquidacionTrabajo && imagenesLiquidacion.length > 0) {
+            sheet.addRow([]);
+            let tituloImagenes = sheet.addRow(['IMAGENES ADJUNTADAS']);
+            tituloImagenes.font = { bold: true, size: 12 };
+            sheet.addRow([]);
+
+            let filaInicio = sheet.rowCount + 1;
+            let colInicio = 1;
+            for (let i = 0; i < imagenesLiquidacion.length; i++) {
+                const imageId = workbook.addImage({
+                    base64: imagenesLiquidacion[i],
+                    extension: 'jpeg'
+                });
+
+                sheet.addImage(imageId, {
+                    tl: { col: colInicio - 1, row: filaInicio - 1 },
+                    ext: { width: 180, height: 120 }
+                });
+
+                colInicio += 3;
+                if (colInicio > 10) {
+                    colInicio = 1;
+                    filaInicio += 7;
+                }
+            }
+        }
+
         // Descargar
         workbook.xlsx.writeBuffer().then(buffer => {
             const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
