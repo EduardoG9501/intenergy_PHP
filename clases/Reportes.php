@@ -674,5 +674,173 @@ class Reporte {
         }
         return $informes;
     }
+
+    public function obtenerLiquidacionTrabajo($filtros) {
+        $c = new conectar();
+        $conexion = $c->conexion();
+
+        $proyecto = !empty($filtros['proyecto']) ? intval($filtros['proyecto']) : 0;
+        $obra = !empty($filtros['obra']) ? intval($filtros['obra']) : 0;
+        $bodega = !empty($filtros['bodega']) ? intval($filtros['bodega']) : 0;
+        $fechaInicial = !empty($filtros['fecha_inicial']) ? mysqli_real_escape_string($conexion, $filtros['fecha_inicial']) : '';
+        $fechaFinal = !empty($filtros['fecha_final']) ? mysqli_real_escape_string($conexion, $filtros['fecha_final']) : '';
+
+        if ($fechaInicial === '' || $fechaFinal === '') {
+            return ['success' => true, 'data' => null];
+        }
+
+        $sql = "SELECT id_liquidacion_trabajo, mano_obra, importante
+                FROM liquidacion_trabajo
+                WHERE fecha_inicial = '$fechaInicial'
+                  AND fecha_final = '$fechaFinal'
+                  AND COALESCE(id_proyecto, 0) = $proyecto
+                  AND COALESCE(id_obra, 0) = $obra
+                  AND COALESCE(id_bodega, 0) = $bodega
+                  AND estado = 1
+                ORDER BY id_liquidacion_trabajo DESC
+                LIMIT 1";
+        $rs = mysqli_query($conexion, $sql);
+        $row = mysqli_fetch_assoc($rs);
+
+        if (!$row) {
+            return ['success' => true, 'data' => null];
+        }
+
+        $idLiquidacion = intval($row['id_liquidacion_trabajo']);
+        $imagenes = $this->listarImagenesLiquidacionTrabajo($idLiquidacion);
+
+        return [
+            'success' => true,
+            'data' => [
+                'id_liquidacion_trabajo' => $idLiquidacion,
+                'mano_obra' => $row['mano_obra'],
+                'importante' => $row['importante'],
+                'imagenes' => $imagenes
+            ]
+        ];
+    }
+
+    public function guardarLiquidacionTrabajo($filtros, $manoObra, $importante, $idUsuario) {
+        $c = new conectar();
+        $conexion = $c->conexion();
+
+        $idUsuario = intval($idUsuario);
+        if ($idUsuario <= 0) {
+            return ['success' => false, 'msg' => 'Usuario inválido para guardar liquidación'];
+        }
+
+        $proyecto = !empty($filtros['proyecto']) ? intval($filtros['proyecto']) : 0;
+        $obra = !empty($filtros['obra']) ? intval($filtros['obra']) : 0;
+        $bodega = !empty($filtros['bodega']) ? intval($filtros['bodega']) : 0;
+        $fechaInicial = !empty($filtros['fecha_inicial']) ? mysqli_real_escape_string($conexion, $filtros['fecha_inicial']) : '';
+        $fechaFinal = !empty($filtros['fecha_final']) ? mysqli_real_escape_string($conexion, $filtros['fecha_final']) : '';
+        $manoObra = mysqli_real_escape_string($conexion, $manoObra);
+        $importante = mysqli_real_escape_string($conexion, $importante);
+
+        if ($fechaInicial === '' || $fechaFinal === '') {
+            return ['success' => false, 'msg' => 'Debe especificar rango de fechas'];
+        }
+
+        $sqlExiste = "SELECT id_liquidacion_trabajo
+                      FROM liquidacion_trabajo
+                      WHERE fecha_inicial = '$fechaInicial'
+                        AND fecha_final = '$fechaFinal'
+                        AND COALESCE(id_proyecto, 0) = $proyecto
+                        AND COALESCE(id_obra, 0) = $obra
+                        AND COALESCE(id_bodega, 0) = $bodega
+                        AND estado = 1
+                      ORDER BY id_liquidacion_trabajo DESC
+                      LIMIT 1";
+        $rsExiste = mysqli_query($conexion, $sqlExiste);
+        $rowExiste = mysqli_fetch_assoc($rsExiste);
+
+        if ($rowExiste) {
+            $idLiquidacion = intval($rowExiste['id_liquidacion_trabajo']);
+            $sqlUpdate = "UPDATE liquidacion_trabajo
+                          SET mano_obra = '$manoObra',
+                              importante = '$importante',
+                              id_usuario = $idUsuario,
+                              fecha_actualizacion = NOW()
+                          WHERE id_liquidacion_trabajo = $idLiquidacion";
+            $ok = mysqli_query($conexion, $sqlUpdate);
+
+            return [
+                'success' => $ok,
+                'id_liquidacion_trabajo' => $idLiquidacion,
+                'msg' => $ok ? 'Liquidación actualizada' : 'No se pudo actualizar',
+                'error' => $ok ? '' : mysqli_error($conexion)
+            ];
+        }
+
+        $idProyectoSql = $proyecto > 0 ? $proyecto : 'NULL';
+        $idObraSql = $obra > 0 ? $obra : 'NULL';
+        $idBodegaSql = $bodega > 0 ? $bodega : 'NULL';
+
+        $sqlInsert = "INSERT INTO liquidacion_trabajo
+                        (id_usuario, id_proyecto, id_obra, id_bodega, fecha_inicial, fecha_final, mano_obra, importante, estado)
+                      VALUES
+                                                                                                ($idUsuario, $idProyectoSql, $idObraSql, $idBodegaSql, '$fechaInicial', '$fechaFinal', '$manoObra', '$importante', 1)";
+        $okInsert = mysqli_query($conexion, $sqlInsert);
+        $idLiquidacion = mysqli_insert_id($conexion); 
+        return [
+            'success' => $okInsert,
+            'id_liquidacion_trabajo' => $idLiquidacion,
+                        'msg' => $okInsert ? 'Liquidación guardada' : 'No se pudo guardar',
+                        'error' => $okInsert ? '' : mysqli_error($conexion)
+        ];
+    }
+
+    public function listarImagenesLiquidacionTrabajo($idLiquidacionTrabajo) {
+        $c = new conectar();
+        $conexion = $c->conexion();
+        $idLiquidacionTrabajo = intval($idLiquidacionTrabajo);
+
+        $sql = "SELECT id_liquidacion_trabajo_imagen, id_liquidacion_trabajo, nombre, ruta, fecha_subida
+                FROM liquidacion_trabajo_imagen
+                WHERE id_liquidacion_trabajo = $idLiquidacionTrabajo AND estado = 1
+                ORDER BY id_liquidacion_trabajo_imagen DESC";
+        $rs = mysqli_query($conexion, $sql);
+        $imagenes = [];
+        while ($row = mysqli_fetch_assoc($rs)) {
+            $imagenes[] = $row;
+        }
+        return $imagenes;
+    }
+
+    public function agregarImagenLiquidacionTrabajo($idLiquidacionTrabajo, $nombre, $ruta) {
+        $c = new conectar();
+        $conexion = $c->conexion();
+
+        $sql = "INSERT INTO liquidacion_trabajo_imagen
+                    (id_liquidacion_trabajo, nombre, ruta, fecha_subida, estado)
+                VALUES (?, ?, ?, NOW(), 1)";
+        $stmt = $conexion->prepare($sql);
+        $stmt->bind_param("iss", $idLiquidacionTrabajo, $nombre, $ruta);
+        $ok = $stmt->execute();
+        $idImagen = $conexion->insert_id;
+        $stmt->close();
+
+        return ['success' => $ok, 'id_liquidacion_trabajo_imagen' => $idImagen];
+    }
+
+    public function obtenerRutaImagenLiquidacionTrabajo($idImagen) {
+        $c = new conectar();
+        $conexion = $c->conexion();
+        $idImagen = intval($idImagen);
+
+        $sql = "SELECT ruta FROM liquidacion_trabajo_imagen WHERE id_liquidacion_trabajo_imagen = $idImagen LIMIT 1";
+        $rs = mysqli_query($conexion, $sql);
+        $row = mysqli_fetch_assoc($rs);
+        return $row ? $row['ruta'] : null;
+    }
+
+    public function eliminarImagenLiquidacionTrabajo($idImagen) {
+        $c = new conectar();
+        $conexion = $c->conexion();
+        $idImagen = intval($idImagen);
+
+        $sql = "UPDATE liquidacion_trabajo_imagen SET estado = 0 WHERE id_liquidacion_trabajo_imagen = $idImagen";
+        return mysqli_query($conexion, $sql);
+    }
 }
 ?>
