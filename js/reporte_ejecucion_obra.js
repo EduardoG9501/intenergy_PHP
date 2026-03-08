@@ -6,6 +6,9 @@
 var materialesOriginal = [], materialesFiltrados = [];
 var horasOriginal = [], horasFiltradas = [];
 var informesOriginal = [], informesFiltrados = [];
+var reporteEndpoint = window.REPORTE_EJECUCION_ENDPOINT || '../procesos/reportes/reporte_ejecucion_obra.php';
+var reporteTitulo = window.REPORTE_EJECUCION_TITULO || 'REPORTE DE EJECUCIÓN DE OBRA';
+var reporteArchivoBase = window.REPORTE_EJECUCION_ARCHIVO || 'reporte_ejecucion_obra';
 
 $(document).ready(function(){
     cargarProyectos();
@@ -51,7 +54,7 @@ $(document).ready(function(){
         doc.setTextColor(40, 55, 71);
         const y = 40;
         const pageWidth = doc.internal.pageSize.getWidth();
-        doc.text("REPORTE DE EJECUCIÓN DE OBRA", pageWidth / 2, y, { align: "center" });
+        doc.text(reporteTitulo, pageWidth / 2, y, { align: "center" });
         const x = 70;
         let fecha_inicial = $('#fecha_inicial').val();
         let fecha_final = $('#fecha_final').val();
@@ -64,9 +67,17 @@ $(document).ready(function(){
         const proyecto = $('#proyecto option:selected').text() || 'Todos';
         const obra = $('#obra option:selected').text() || 'Todos';
         const lugar = $('#bodega option:selected').text() || 'Todos';
+        const manoObra = ($('#txtManoObra').val() || '').trim();
+        const importante = ($('#txtImportante').val() || '').trim();
         doc.text(`Proyecto: ${proyecto}`, 50, filtroY); filtroY += 16;
         doc.text(`Nombre de la Obra: ${obra}`, 50, filtroY); filtroY += 16;
         doc.text(`Lugar: ${lugar}`, 50, filtroY); filtroY += 16;
+        if (manoObra) {
+            doc.text(`Mano de Obra: ${manoObra}`, 50, filtroY); filtroY += 16;
+        }
+        if (importante) {
+            doc.text(`Importante: ${importante}`, 50, filtroY); filtroY += 16;
+        }
         doc.text('Artículos: Todos', 50, filtroY); filtroY += 10;
 
         // Materiales
@@ -212,7 +223,7 @@ $(document).ready(function(){
         doc.setFontSize(10);
         doc.setTextColor(127, 140, 141);
         doc.text(`Generado el: ${fecha} | Usuario:` +  (window.usuarioActual || ''), 50, doc.internal.pageSize.getHeight() - 30);
-        doc.save('reporte_ejecucion_obra.pdf');
+        doc.save(reporteArchivoBase + '.pdf');
     }
 
     // Utilidad para convertir imagen a base64
@@ -232,11 +243,17 @@ $(document).ready(function(){
         const workbook = new ExcelJS.Workbook();
         const sheet = workbook.addWorksheet('Ejecución de Obra');
         // Cabecera
-        sheet.addRow(['REPORTE DE EJECUCIÓN DE OBRA']);
+        sheet.addRow([reporteTitulo]);
         sheet.addRow([`Desde: ${$('#fecha_inicial').val()} Hasta: ${$('#fecha_final').val()}`]);
         sheet.addRow([`Proyecto: ${$('#proyecto option:selected').text()}`]);
         sheet.addRow([`Nombre de la Obra: ${$('#obra option:selected').text()}`]);
         sheet.addRow([`Lugar: ${$('#bodega option:selected').text()}`]);
+        if ($('#txtManoObra').length && ($('#txtManoObra').val() || '').trim() !== '') {
+            sheet.addRow([`Mano de Obra: ${$('#txtManoObra').val()}`]);
+        }
+        if ($('#txtImportante').length && ($('#txtImportante').val() || '').trim() !== '') {
+            sheet.addRow([`Importante: ${$('#txtImportante').val()}`]);
+        }
         sheet.addRow([]);
         // Título y línea solo una vez
         let matTitle = sheet.addRow(['MATERIALES A UTILIZAR']);
@@ -335,7 +352,7 @@ $(document).ready(function(){
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'reporte_ejecucion_obra.xlsx';
+            a.download = reporteArchivoBase + '.xlsx';
             a.click();
             window.URL.revokeObjectURL(url);
         });
@@ -382,7 +399,7 @@ $(document).ready(function(){
 });
 
 function cargarProyectos() {
-    $.post('../procesos/reportes/reporte_ejecucion_obra.php', {accion:'listar_proyectos'}, function(data){
+    $.post(reporteEndpoint, {accion:'listar_proyectos'}, function(data){
         let proyectos = JSON.parse(data);
         let $proyecto = $('#proyecto');
         $proyecto.empty().append('<option value="">Todos</option>');
@@ -393,7 +410,7 @@ function cargarProyectos() {
     });
 }
 function cargarObras(proyecto) {
-    $.post('../procesos/reportes/reporte_ejecucion_obra.php', {accion:'listar_obras', proyecto: proyecto}, function(data){
+    $.post(reporteEndpoint, {accion:'listar_obras', proyecto: proyecto}, function(data){
         let obras = JSON.parse(data);
         let $obra = $('#obra');
         $obra.empty().append('<option value="">Todos</option>');
@@ -404,7 +421,7 @@ function cargarObras(proyecto) {
     });
 }
 function cargarBodegas() {
-    $.post('../procesos/reportes/reporte_ejecucion_obra.php', {accion:'listar_bodegas'}, function(data){
+    $.post(reporteEndpoint, {accion:'listar_bodegas'}, function(data){
         let bodegas = JSON.parse(data);
         let $bodega = $('#bodega');
         $bodega.empty().append('<option value="">Todos</option>');
@@ -427,7 +444,7 @@ function obtenerFiltros() {
 
 function cargarMateriales() {
     let datos = {accion:'materiales', filtros:obtenerFiltros()};
-    $.post('../procesos/reportes/reporte_ejecucion_obra.php', datos, function(data){
+    $.post(reporteEndpoint, datos, function(data){
         let materiales = JSON.parse(data);
         materialesOriginal = materiales;
         materialesFiltrados = materialesOriginal;
@@ -490,7 +507,7 @@ function pintarTablaMateriales(materiales) {
 
 function cargarHoras() {
     let datos = {accion:'horas', filtros:obtenerFiltros()};
-    $.post('../procesos/reportes/reporte_ejecucion_obra.php', datos, function(data){
+    $.post(reporteEndpoint, datos, function(data){
         let horas = JSON.parse(data);
         horasOriginal = horas;
         horasFiltradas = horasOriginal;
@@ -559,7 +576,7 @@ function pintarTablaHoras(horas) {
 
 function cargarInformes() {
     let datos = {accion:'informes', filtros:obtenerFiltros()};
-    $.post('../procesos/reportes/reporte_ejecucion_obra.php', datos, function(data){
+    $.post(reporteEndpoint, datos, function(data){
         let informes = JSON.parse(data);
         informesOriginal = informes;
         informesFiltrados = informesOriginal;
