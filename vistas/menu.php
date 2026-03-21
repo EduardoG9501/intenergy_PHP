@@ -90,7 +90,11 @@ if (
 
 // 7. Si el usuario cambia la bodega (por POST/AJAX)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bodega_seleccionada'])) {
-    $_SESSION['bodega_seleccionada'] = $_POST['bodega_seleccionada'];
+  $bodegaPost = intval($_POST['bodega_seleccionada']);
+  $idsPermitidos = array_map('intval', array_column($bodegas, 'id_bodega'));
+  if (in_array($bodegaPost, $idsPermitidos, true)) {
+    $_SESSION['bodega_seleccionada'] = $bodegaPost;
+  }
     exit;
 }
 ?> 
@@ -161,17 +165,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bodega_seleccionada']
                   </form>
                   <script>
                   $(document).ready(function(){
+                      var bodegaSesion = '<?= (int)$selected_bodega ?>';
+
                       // Al cargar, si hay bodega guardada en localStorage y existe en la lista, selecciónala
                       var bodegaLS = localStorage.getItem('bodega_seleccionada');
                       if(bodegaLS && $('#bodega_seleccionada option[value="'+bodegaLS+'"]').length > 0) {
                           $('#bodega_seleccionada').val(bodegaLS);
+
+                        // Si localStorage y sesión no coinciden, sincroniza la sesión primero
+                        if (bodegaLS !== bodegaSesion) {
+                          $.post('menu.php', {bodega_seleccionada: bodegaLS}, function(){
+                            location.reload();
+                          });
+                          return;
+                        }
                       }
 
                       // Al cambiar el select, guarda en localStorage y en la sesión
                       $('#bodega_seleccionada').change(function(){
                           var idBodega = $(this).val();
                           localStorage.setItem('bodega_seleccionada', idBodega);
-                          $.post('', {bodega_seleccionada: idBodega}, function(){
+                        $.post('menu.php', {bodega_seleccionada: idBodega}, function(){
                               location.reload();
                           });
                       });
