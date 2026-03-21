@@ -125,7 +125,7 @@ if(isset($_SESSION['usuario'])){
                         <label class="label-custom" for="fecha_hasta" style="margin-top:10px;">Hasta:</label>
                         <input type="date" class="form-control" name="fecha_hasta" id="fecha_hasta" value="<?=date('Y-m-d')?>">
                     </div>
-                    <!-- Bodega principal / secundaria -->
+                    <!-- Bodega principal -->
                     <div class="filtro-grupo">
                         <label class="label-custom" for="bodega_principal">B. Lugar:</label>
                         <select name="bodega_principal" id="bodega_principal" class="form-control select2">
@@ -137,19 +137,29 @@ if(isset($_SESSION['usuario'])){
                             }
                             ?>
                         </select>
-                        <label class="label-custom" for="bodega_secundaria" style="margin-top:10px;">B. Ubicaciòn:</label>
-                        <select name="bodega_secundaria" id="bodega_secundaria" class="form-control select2">
+                        <label class="label-custom" for="obra" style="margin-top:10px;">Nombre de Obra:</label>
+                        <select name="obra" id="obra" class="form-control select2">
                             <option value="">Todos</option>
                             <?php
-                            $bodegas2 = mysqli_query($conexion, "SELECT id_bodega, nombreBodega FROM bodegas WHERE estado=1");
-                            while($row = mysqli_fetch_assoc($bodegas2)){
-                                echo "<option value='{$row['id_bodega']}'>{$row['nombreBodega']}</option>";
+                            $obras = mysqli_query($conexion, "SELECT id, nombre FROM obra WHERE estado=1 ORDER BY nombre ASC");
+                            while($row = mysqli_fetch_assoc($obras)){
+                                echo "<option value='{$row['id']}'>{$row['nombre']}</option>";
                             }
                             ?>
                         </select>
-                    </div> 
-                    <!-- Tipo de movimiento y sub tipo -->
+                    </div>
+                    <!-- Proyecto + tipo/subtipo -->
                     <div class="filtro-grupo">
+                        <label class="label-custom" for="proyecto">Proyecto:</label>
+                        <select name="proyecto" id="proyecto" class="form-control select2">
+                            <option value="">Todos</option>
+                            <?php
+                            $proyectos = mysqli_query($conexion, "SELECT id, nombre FROM proyecto WHERE estado=1 ORDER BY nombre ASC");
+                            while($row = mysqli_fetch_assoc($proyectos)){
+                                echo "<option value='{$row['id']}'>{$row['nombre']}</option>";
+                            }
+                            ?>
+                        </select>
                         <label class="label-custom" for="tipo_movimiento">Tipo de Movimiento:</label>
                         <select name="tipo_movimiento" id="tipo_movimiento" class="form-control select2">
                             <option value="">Todos</option>
@@ -160,7 +170,11 @@ if(isset($_SESSION['usuario'])){
                             }
                             ?>
                         </select>
-                        <label class="label-custom" for="sub_tipo_movimiento" style="margin-top:10px;">Sub Tipo Movimiento:</label>
+                       
+                    </div>
+                     <!-- Producto -->
+                    <div class="filtro-grupo">
+                         <label class="label-custom" for="sub_tipo_movimiento" style="margin-top:10px;">Sub Tipo de Movimiento:</label>
                         <select name="sub_tipo_movimiento" id="sub_tipo_movimiento" class="form-control select2">
                             <option value="">Todos</option>
                             <?php
@@ -170,9 +184,6 @@ if(isset($_SESSION['usuario'])){
                             }
                             ?>
                         </select>
-                    </div>
-                     <!-- Producto -->
-                    <div class="filtro-grupo">
                         <label class="label-custom" for="producto">Producto:</label>
                         <select name="producto" id="producto" class="form-control select2">
                             <option value="">Todos</option>
@@ -209,6 +220,15 @@ $(document).ready(function(){
         });
     });
 
+    $("#proyecto").change(function(){
+        var idProyecto = $(this).val();
+        $("#obra").html('<option value="">Cargando...</option>');
+        $.get("reportes/get_obras_proyecto.php", { id_proyecto: idProyecto }, function(data){
+            $("#obra").html(data);
+            $("#obra").val('').trigger('change');
+        });
+    });
+
     cargarTablaKardex();
 
     $("#formKardexFiltros").submit(function(e){
@@ -223,10 +243,11 @@ $(document).ready(function(){
     $('#imprimirPDF').on('click', function(){
         var filtrosAplicados = {
             "Lugar": $('#bodega_principal option:selected').text() || 'Todas',
-            "Ubicaciòn": $('#bodega_secundaria option:selected').text() || 'Todas',
+            "Nombre de Obra": $('#obra option:selected').text() || 'Todas',
+            "Proyecto": $('#proyecto option:selected').text() || 'Todos',
             "Producto": $('#producto option:selected').text() || 'Todos',
             "Tipo de Movimiento": $('#tipo_movimiento option:selected').text() || 'Todos',
-            "Sub Tipo Movimiento": $('#sub_tipo_movimiento option:selected').text() || 'Todos'
+            "Sub Tipo de Movimiento": $('#sub_tipo_movimiento option:selected').text() || 'Todos'
         };
         const resultados = obtenerDatosDeTablaKardex('tablaKardex');
         exportarTablaKardexAPDF(resultados, filtrosAplicados);
@@ -257,60 +278,25 @@ function cargarTablaKardex() {
     });
 }
 
-// --- CALCULO DE TOTALES: suma ENTRADAS menos suma SALIDAS
 function calcularYMostrarTotalesKardex() {
     var table = $('#tablaKardex').DataTable();
-    var entradaCantidad=0, salidaCantidad=0;
-    var entradaSubtotal=0, salidaSubtotal=0;
-    var entradaDescuento=0, salidaDescuento=0;
-    var entradaIva=0, salidaIva=0;
-    var entradaTotal=0, salidaTotal=0;
+    var totalCantidad = 0;
     table.rows({search:'applied'}).every(function(){
         var data = this.data();
-        var tipoMov = data[3] ? data[3].toUpperCase() : "";
-        // Indices: [6]=Precio, [7]=Cantidad, [8]=Subtotal, [9]=Descuento, [10]=Iva, [11]=Total
-        if(tipoMov === "ENTRADA"){
-            entradaCantidad  += parseFloat(data[7]) || 0;
-            entradaSubtotal  += parseFloat(data[8]) || 0;
-            entradaDescuento += parseFloat(data[9]) || 0;
-            entradaIva       += parseFloat(data[10]) || 0;
-            entradaTotal     += parseFloat(data[11]) || 0;
-        } else if(tipoMov === "SALIDA"){
-            salidaCantidad  += parseFloat(data[7]) || 0;
-            salidaSubtotal  += parseFloat(data[8]) || 0;
-            salidaDescuento += parseFloat(data[9]) || 0;
-            salidaIva       += parseFloat(data[10]) || 0;
-            salidaTotal     += parseFloat(data[11]) || 0;
-        }
+        totalCantidad += parseFloat(data[8]) || 0;
     });
-    var totalCantidad  = entradaCantidad  - salidaCantidad;
-    var totalSubtotal  = entradaSubtotal  - salidaSubtotal;
-    var totalDescuento = entradaDescuento - salidaDescuento;
-    var totalIva       = entradaIva       - salidaIva;
-    var totalTotal     = entradaTotal     - salidaTotal;
 
-    // Si no existe tfoot, lo agregamos
-    if ($('#tablaKardex tfoot').length == 0) {
+    if ($('#tablaKardex tfoot').length === 0) {
         $('#tablaKardex').append(`
         <tfoot>
             <tr style="background:#2986C5;color:#fff;font-weight:bold;">
-                <td colspan="6" style="text-align:right;">TOTAL:</td>
-                <td id="totalPrecio"></td>
+                <td colspan="8" style="text-align:right;">TOTAL:</td>
                 <td id="totalCantidad"></td>
-                <td id="totalSubtotal"></td>
-                <td id="totalDescuento"></td>
-                <td id="totalIva"></td>
-                <td id="totalTotal"></td>
                 <td></td>
             </tr>
         </tfoot>`);
     }
-    $('#totalPrecio').text(''); // Precio no se suma/resta
     $('#totalCantidad').text(totalCantidad.toFixed(2));
-    $('#totalSubtotal').text(totalSubtotal.toFixed(2));
-    $('#totalDescuento').text(totalDescuento.toFixed(2));
-    $('#totalIva').text(totalIva.toFixed(2));
-    $('#totalTotal').text(totalTotal.toFixed(2));
 }
 
 // --- FUNCION EXPORTAR EXCEL CON HEADER Y FOOTER AZUL ---
@@ -324,46 +310,14 @@ function exportarExcelKardex(){
         bodyRows.push(cols);
     });
 
-    // Calcular subtotales ENTRADA/SALIDA para Excel
-    var entradaCantidad=0, salidaCantidad=0;
-    var entradaSubtotal=0, salidaSubtotal=0;
-    var entradaDescuento=0, salidaDescuento=0;
-    var entradaIva=0, salidaIva=0;
-    var entradaTotal=0, salidaTotal=0;
+    var totalCantidad = 0;
     var tableDT = $('#tablaKardex').DataTable();
     tableDT.rows({search:'applied'}).every(function(){
         var data = this.data();
-        var tipoMov = data[3] ? data[3].toUpperCase() : "";
-        if(tipoMov === "ENTRADA"){
-            entradaCantidad  += parseFloat(data[7]) || 0;
-            entradaSubtotal  += parseFloat(data[8]) || 0;
-            entradaDescuento += parseFloat(data[9]) || 0;
-            entradaIva       += parseFloat(data[10]) || 0;
-            entradaTotal     += parseFloat(data[11]) || 0;
-        } else if(tipoMov === "SALIDA"){
-            salidaCantidad  += parseFloat(data[7]) || 0;
-            salidaSubtotal  += parseFloat(data[8]) || 0;
-            salidaDescuento += parseFloat(data[9]) || 0;
-            salidaIva       += parseFloat(data[10]) || 0;
-            salidaTotal     += parseFloat(data[11]) || 0;
-        }
+        totalCantidad += parseFloat(data[8]) || 0;
     });
-    var totalCantidad  = entradaCantidad  - salidaCantidad;
-    var totalSubtotal  = entradaSubtotal  - salidaSubtotal;
-    var totalDescuento = entradaDescuento - salidaDescuento;
-    var totalIva       = entradaIva       - salidaIva;
-    var totalTotal     = entradaTotal     - salidaTotal;
 
-    var footRow = [
-        "", "", "", "", "", "TOTAL:",
-        "", // precio
-        totalCantidad.toFixed(2),
-        totalSubtotal.toFixed(2),
-        totalDescuento.toFixed(2),
-        totalIva.toFixed(2),
-        totalTotal.toFixed(2),
-        ""
-    ];
+    var footRow = ["", "", "", "", "", "", "", "TOTAL:", totalCantidad.toFixed(2), ""];
 
     var workbook = new ExcelJS.Workbook();
     var worksheet = workbook.addWorksheet('Kardex');
@@ -385,7 +339,7 @@ function exportarExcelKardex(){
         cell.alignment = { horizontal: "right", vertical: "middle" };
         cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
     });
-    totalRow.getCell(6).alignment = { horizontal: "left", vertical: "middle" }; // "TOTAL:"
+    totalRow.getCell(8).alignment = { horizontal: "left", vertical: "middle" };
 
     worksheet.columns.forEach(function(column, i) {
         let maxLength = 10;
@@ -433,60 +387,29 @@ function exportarTablaKardexAPDF(resultados, filtrosAplicados) {
     });
     filtroY += 10;
 
-    // Calcular subtotales ENTRADA/SALIDA para PDF
-    var entradaCantidad=0, salidaCantidad=0;
-    var entradaSubtotal=0, salidaSubtotal=0;
-    var entradaDescuento=0, salidaDescuento=0;
-    var entradaIva=0, salidaIva=0;
-    var entradaTotal=0, salidaTotal=0;
+    var totalCantidad = 0;
     resultados.forEach(r => {
-        var tipoMov = r.campo4 ? r.campo4.toUpperCase() : "";
-        if(tipoMov === "ENTRADA"){
-            entradaCantidad  += parseFloat(r.campo8) || 0;
-            entradaSubtotal  += parseFloat(r.campo9) || 0;
-            entradaDescuento += parseFloat(r.campo10) || 0;
-            entradaIva       += parseFloat(r.campo11) || 0;
-            entradaTotal     += parseFloat(r.campo12) || 0;
-        } else if(tipoMov === "SALIDA"){
-            salidaCantidad  += parseFloat(r.campo8) || 0;
-            salidaSubtotal  += parseFloat(r.campo9) || 0;
-            salidaDescuento += parseFloat(r.campo10) || 0;
-            salidaIva       += parseFloat(r.campo11) || 0;
-            salidaTotal     += parseFloat(r.campo12) || 0;
-        }
+        totalCantidad += parseFloat(r.campo9) || 0;
     });
-    var totalCantidad  = entradaCantidad  - salidaCantidad;
-    var totalSubtotal  = entradaSubtotal  - salidaSubtotal;
-    var totalDescuento = entradaDescuento - salidaDescuento;
-    var totalIva       = entradaIva       - salidaIva;
-    var totalTotal     = entradaTotal     - salidaTotal;
 
     const columns = [
-        { header: 'Fecha', dataKey: 'campo1' },
-        { header: 'Lugar', dataKey: 'campo2' },
-        { header: 'Ubicaciòn', dataKey: 'campo3' },
-        { header: 'Tipo Movimiento', dataKey: 'campo4' },
-        { header: 'Sub Tipo Movimiento', dataKey: 'campo5' },
-        { header: 'Producto', dataKey: 'campo6' },
-        { header: 'Precio', dataKey: 'campo7' },
-        { header: 'Cantidad', dataKey: 'campo8' },
-        { header: 'Subtotal', dataKey: 'campo9' },
-        { header: 'Descuento', dataKey: 'campo10' },
-        { header: 'IVA', dataKey: 'campo11' },
-        { header: 'Total', dataKey: 'campo12' },
-        { header: 'No Documento', dataKey: 'campo13' }
+        { header: 'ID ORDEN', dataKey: 'campo1' },
+        { header: 'PROYECTO', dataKey: 'campo2' },
+        { header: 'NOMBRE DE LA OBRA', dataKey: 'campo3' },
+        { header: 'LUGAR', dataKey: 'campo4' },
+        { header: 'FECHA', dataKey: 'campo5' },
+        { header: 'TIPO MOVIMIENTO', dataKey: 'campo6' },
+        { header: 'SUB TIPO MOVIMIENTO', dataKey: 'campo7' },
+        { header: 'ARTICULO', dataKey: 'campo8' },
+        { header: 'CANTIDAD', dataKey: 'campo9' },
+        { header: '#DOCUMENTO', dataKey: 'campo10' }
     ];
 
-    // Footer totales
     const totalRow = {
-        campo1: "", campo2: "", campo3: "", campo4: "", campo5: "", campo6: "TOTAL:",
-        campo7: "",
-        campo8: totalCantidad.toFixed(2),
-        campo9: totalSubtotal.toFixed(2),
-        campo10: totalDescuento.toFixed(2),
-        campo11: totalIva.toFixed(2),
-        campo12: totalTotal.toFixed(2),
-        campo13: ""
+        campo1: "", campo2: "", campo3: "", campo4: "", campo5: "", campo6: "", campo7: "TOTAL:",
+        campo8: "",
+        campo9: totalCantidad.toFixed(2),
+        campo10: ""
     };
 
     doc.autoTable({
@@ -529,19 +452,16 @@ function obtenerDatosDeTablaKardex(tablaId) {
     const allData = table.rows({search:'applied'}).data().toArray();
     allData.forEach(row => {
         resultados.push({
-            campo1: row[0], // Fecha
-            campo2: row[1], // Bodega Principal
-            campo3: row[2], // Bodega Secundaria
-            campo4: row[3], // Tipo Movimiento
-            campo5: row[4], // Sub Tipo Movimiento
-            campo6: row[5], // Producto
-            campo7: row[6], // Precio
-            campo8: row[7], // Cantidad
-            campo9: row[8], // Subtotal
-            campo10: row[9], // Descuento
-            campo11: row[10], // IVA
-            campo12: row[11], // Total
-            campo13: row[12] // No Documento
+            campo1: row[0], // ID ORDEN
+            campo2: row[1], // PROYECTO
+            campo3: row[2], // NOMBRE DE LA OBRA
+            campo4: row[3], // LUGAR
+            campo5: row[4], // FECHA
+            campo6: row[5], // TIPO MOVIMIENTO
+            campo7: row[6], // SUB TIPO MOVIMIENTO
+            campo8: row[7], // ARTICULO
+            campo9: row[8], // CANTIDAD
+            campo10: row[9] // #DOCUMENTO
         });
     });
     return resultados;
