@@ -1,13 +1,19 @@
 <?php
 class PedidoMateriales {
     // --- CRUD principal ---
-    public function listar() {
+    public function listar($id_orden = null, $id_bodega = null) {
         $c = new conectar();
         $conexion = $c->conexion();
+        $filtros = [];
+        if (!empty($id_orden) && is_numeric($id_orden)) {
+            $filtros[] = "pm.id_orden = " . intval($id_orden);
+        }
+        if (!empty($id_bodega) && is_numeric($id_bodega)) {
+            $filtros[] = "ot.id_bodega_principal = " . intval($id_bodega);
+        }
         $where = '';
-        if (isset($_GET['id_orden']) && is_numeric($_GET['id_orden'])) {
-            $id_orden = intval($_GET['id_orden']);
-            $where = " WHERE pm.id_orden = $id_orden ";
+        if (!empty($filtros)) {
+            $where = ' WHERE ' . implode(' AND ', $filtros);
         }
         $sql = "SELECT pm.*, ot.identificador AS orden_identificador, ot.observacion AS orden_descripcion, epm.estado AS estado_nombre
                 FROM pedido_materiales pm
@@ -115,10 +121,14 @@ class PedidoMateriales {
         return $datos;
     }
 
-    public function ordenes() {
+    public function ordenes($id_bodega = null) {
         $c = new conectar();
         $conexion = $c->conexion();
-        $sql = "SELECT id_orden, identificador FROM ordenes_trabajo WHERE estado = 1";
+        $filtro = '';
+        if (!empty($id_bodega) && is_numeric($id_bodega)) {
+            $filtro = " AND id_bodega_principal = " . intval($id_bodega);
+        }
+        $sql = "SELECT id_orden, identificador FROM ordenes_trabajo WHERE estado = 1 $filtro";
         $result = mysqli_query($conexion, $sql);
         $datos = [];
         while ($fila = mysqli_fetch_assoc($result)) {

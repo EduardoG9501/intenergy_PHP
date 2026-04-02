@@ -188,10 +188,26 @@ function cargarOrdenes() {
         .then(ordenes => {
             const sel = document.getElementById('id_orden');
             sel.innerHTML = '';
+			if (!Array.isArray(ordenes) || ordenes.length === 0) {
+				sel.innerHTML = '<option value="">Sin ordenes disponibles en bodega activa</option>';
+				if (window.jQuery) {
+					if ($('#id_orden').hasClass('select2-hidden-accessible')) {
+						$('#id_orden').select2('destroy');
+					}
+					$('#id_orden').select2();
+				}
+				return [];
+			}
             ordenes.forEach(o => {  
                 sel.innerHTML += `<option value="${o.id_orden}">${o.identificador}</option>`;
             });
-             $('#id_orden').select2();
+			if (window.jQuery) {
+				if ($('#id_orden').hasClass('select2-hidden-accessible')) {
+					$('#id_orden').select2('destroy');
+				}
+				$('#id_orden').select2();
+			}
+			return ordenes;
         });
 }
 function cargarEstadosPedido(valorActual = null) {
@@ -218,14 +234,23 @@ function mostrarFormulario(pedido = null) {
 				document.getElementById(k).value = pedido[k];
 			}
 		});
-		cargarOrdenes().then(() => {
-			idOrdenCombo.value = pedido.id_orden;
-			$('#id_orden').trigger('change');
+		cargarOrdenes().then((ordenes) => {
+			const existeOrden = Array.isArray(ordenes) && ordenes.some(o => String(o.id_orden) === String(pedido.id_orden));
+			if (existeOrden) {
+				idOrdenCombo.value = pedido.id_orden;
+				if (window.jQuery) {
+					$('#id_orden').trigger('change');
+				}
+			} else {
+				idOrdenCombo.value = '';
+			}
 			// Si viene de orden, inactivar combo
 			if (window._idOrdenTrabajo) {
 				idOrdenCombo.value = window._idOrdenTrabajo;
 				idOrdenCombo.disabled = true;
-				$(idOrdenCombo).select2({disabled:true});
+				if (window.jQuery) {
+					$(idOrdenCombo).select2({disabled:true});
+				}
 				// Agregar input hidden para enviar el valor aunque esté deshabilitado
 				let hiddenOrden = document.getElementById('hidden_id_orden');
 				if (!hiddenOrden) {
@@ -238,7 +263,9 @@ function mostrarFormulario(pedido = null) {
 				hiddenOrden.value = window._idOrdenTrabajo;
 			} else {
 				idOrdenCombo.disabled = false;
-				$(idOrdenCombo).select2({disabled:false});
+				if (window.jQuery) {
+					$(idOrdenCombo).select2({disabled:false});
+				}
 				// Eliminar el hidden si existe
 				let hiddenOrden = document.getElementById('hidden_id_orden');
 				if (hiddenOrden) hiddenOrden.remove();
@@ -255,7 +282,9 @@ function mostrarFormulario(pedido = null) {
 			if (window._idOrdenTrabajo) {
 				idOrdenCombo.value = window._idOrdenTrabajo;
 				idOrdenCombo.disabled = true;
-				$(idOrdenCombo).select2({disabled:true});
+				if (window.jQuery) {
+					$(idOrdenCombo).select2({disabled:true});
+				}
 				// Agregar input hidden para enviar el valor aunque esté deshabilitado
 				let hiddenOrden = document.getElementById('hidden_id_orden');
 				if (!hiddenOrden) {
@@ -268,7 +297,9 @@ function mostrarFormulario(pedido = null) {
 				hiddenOrden.value = window._idOrdenTrabajo;
 			} else {
 				idOrdenCombo.disabled = false;
-				$(idOrdenCombo).select2({disabled:false});
+				if (window.jQuery) {
+					$(idOrdenCombo).select2({disabled:false});
+				}
 				// Eliminar el hidden si existe
 				let hiddenOrden = document.getElementById('hidden_id_orden');
 				if (hiddenOrden) hiddenOrden.remove();
@@ -290,6 +321,16 @@ function editarPedido(id_pedido_material) {
 		.then(pedido => mostrarFormulario(pedido));
 }
 function guardarPedido() {
+	const idOrdenSeleccionado = document.getElementById('id_orden').value;
+	if (!idOrdenSeleccionado) {
+		Swal.fire({
+			title: 'Orden no disponible',
+			text: 'No hay una orden valida para la bodega activa.',
+			icon: 'warning',
+			draggable: true,
+		});
+		return;
+	}
 	const formPedido = document.getElementById('formPedido');
 	const datos = new FormData(formPedido);
 	datos.append('action', 'guardar');
