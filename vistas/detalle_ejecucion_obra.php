@@ -7,6 +7,7 @@ if(isset($_SESSION['usuario'])){
 	$id_ejecucion_obra = isset($_GET['id_ejecucion_obra']) ? $_GET['id_ejecucion_obra'] : null;
 	$id_estado_ejecucion_obra = isset($_GET['id_estado_ejecucion_obra']) ? $_GET['id_estado_ejecucion_obra'] : null;
 	$idorden = isset($_GET['idorden']) ? $_GET['idorden'] : null;
+	$bodegaActivaSesion = isset($_SESSION['bodega_seleccionada']) ? strval($_SESSION['bodega_seleccionada']) : '';
 ?>
 <!DOCTYPE html>
 <html>
@@ -95,8 +96,29 @@ label { display: inline-block; max-width: 100%; margin-bottom: 5px; font-weight:
 </style>
 <script type="text/javascript">
 var idOrdenFiltro = <?php echo $idorden ? ('"' . $idorden . '"') : 'null'; ?>;
+window.bodegaActivaSesionDetalleEjecucion = <?php echo json_encode($bodegaActivaSesion); ?>;
 let detallesActuales = [];
 let contabilizado = false;
+
+function fijarBodegaActivaDetalleEjecucion() {
+	var bodegaActiva = window.bodegaActivaSesionDetalleEjecucion || '';
+	if (!bodegaActiva && window.jQuery && $('#bodega_seleccionada').length > 0) {
+		bodegaActiva = $('#bodega_seleccionada').val() || '';
+	}
+	var sel = document.getElementById('id_bodega_lugar');
+	if (!sel || !bodegaActiva) return;
+
+	if (!sel.querySelector('option[value="' + bodegaActiva + '"]')) {
+		return;
+	}
+
+	sel.value = bodegaActiva;
+	if (window.jQuery && $(sel).data('select2')) {
+		$(sel).val(bodegaActiva).trigger('change.select2');
+	}
+	sel.disabled = true;
+}
+
 // Verifica si ya está contabilizado para bloquear edición
 function verificarContabilizado() {
 	const id = <?= $id_ejecucion_obra ?>;
@@ -112,6 +134,7 @@ function verificarContabilizado() {
 					       document.getElementById('formDetalle').querySelectorAll('input, select, button').forEach(el => {
 						       if (el.id !== 'btnGuardarGeneral') el.disabled = false;
 					       });
+						   fijarBodegaActivaDetalleEjecucion();
 				       }
 		});
 }
@@ -133,6 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				if (window.jQuery) {
 					$('#id_bodega_lugar').select2();
 				}
+				fijarBodegaActivaDetalleEjecucion();
 			});
 	}
 	if (window.jQuery) {
@@ -358,17 +382,13 @@ function editarDetalle(detalle) {
 	document.getElementById('id_ejecucion_obra_detalle_materiales_utilizar').value = detalle.id_ejecucion_obra_detalle_materiales_utilizar;
 	document.getElementById('id_producto').value = detalle.id_producto;
 	document.getElementById('cantidad').value = detalle.cantidad;
-	document.getElementById('id_bodega_lugar').value = detalle.id_bodega_lugar;
 	document.getElementById('btnGuardarDetalle').textContent = "GUARDAR CAMBIOS";
 	document.getElementById('btnCancelarDetalle').style.display = "";
 	const sel = document.getElementById('id_producto');
 	if (window.jQuery && $(sel).data('select2')) {
 		$(sel).val(detalle.id_producto.toString()).trigger('change');
 	}
-	const selBodega = document.getElementById('id_bodega_lugar');
-	if (window.jQuery && $(selBodega).data('select2')) {
-		$(selBodega).val(detalle.id_bodega_lugar.toString()).trigger('change');
-	}
+	fijarBodegaActivaDetalleEjecucion();
 }
 function limpiarFormulario() {
 	document.getElementById('formDetalle').reset();
@@ -382,15 +402,10 @@ function limpiarFormulario() {
 			$(sel).val(sel.options[0].value).trigger('change');
 		}
 	}
-	const selBodega = document.getElementById('id_bodega_lugar');
-	if (selBodega && selBodega.options.length > 0) {
-		selBodega.selectedIndex = 0;
-		if (window.jQuery && $(selBodega).data('select2')) {
-			$(selBodega).val(selBodega.options[0].value).trigger('change');
-		}
-	}
+	fijarBodegaActivaDetalleEjecucion();
 }
 function eliminarDetalle(id) {
+	const formDetalle = document.getElementById('formDetalle');
 	Swal.fire({
 		title: "¿Eliminar artículo?",
 		text: "Esta acción no se puede revertir.",
@@ -419,6 +434,7 @@ function eliminarDetalle(id) {
 					});
 					limpiarFormulario();
 					formDetalle.querySelectorAll('input, select, button').forEach(el => el.disabled = false);
+					fijarBodegaActivaDetalleEjecucion();
 				}, 400);
 			});
 		}

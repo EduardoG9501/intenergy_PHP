@@ -32,7 +32,7 @@ switch ($action) {
 	case 'validar_stock':
 		// Valida el stock disponible en stock_productos_bodega
 		$id_producto = $_POST['id_producto'] ?? $_GET['id_producto'] ?? null;
-		$id_bodega = $_POST['id_bodega'] ?? $_GET['id_bodega'] ?? null;
+		$id_bodega = $_SESSION['bodega_seleccionada'] ?? ($_POST['id_bodega'] ?? $_GET['id_bodega'] ?? null);
 		$cantidad = $_POST['cantidad'] ?? $_GET['cantidad'] ?? null;
 		if ($id_producto && $id_bodega && $cantidad) {
 			require_once "../../clases/Conexion.php";
@@ -81,6 +81,13 @@ switch ($action) {
 		echo json_encode($ejecucionObra->listarDetalle($id));
 		break;
 	case 'guardar_detalle':
+		if (isset($_SESSION['bodega_seleccionada']) && $_SESSION['bodega_seleccionada'] !== '') {
+			$_POST['id_bodega_lugar'] = $_SESSION['bodega_seleccionada'];
+		}
+		if (empty($_POST['id_bodega_lugar'])) {
+			echo json_encode(['success' => false, 'mensaje' => 'No hay bodega activa seleccionada en la sesión.']);
+			exit;
+		}
 		$result = $ejecucionObra->guardarDetalle($_POST);
 		echo json_encode($result);
 		break;
