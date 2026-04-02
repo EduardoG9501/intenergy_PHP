@@ -278,7 +278,6 @@ $(document).ready(function(){
                     if (!rutaImagen) continue;
                     const base64 = await imageUrlToDataUrl(rutaImagen);
                     if (base64) imagenesMiniatura.push(base64);
-                    if (imagenesMiniatura.length >= 4) break;
                 }
             }
 
@@ -313,6 +312,22 @@ $(document).ready(function(){
                     2: { cellWidth: 160, halign: 'center' },
                     3: { cellWidth: 210 }
                 },
+                didParseCell: function(data) {
+                    if (
+                        data.section === 'body' &&
+                        data.row.raw &&
+                        Array.isArray(data.row.raw.__imagenesMiniaturas) &&
+                        data.column.index === 2
+                    ) {
+                        const imgs = data.row.raw.__imagenesMiniaturas;
+                        const porFila = 4;
+                        const filas = Math.max(1, Math.ceil(imgs.length / porFila));
+                        const altoImg = 28;
+                        const gapY = 4;
+                        const altoNecesario = (filas * altoImg) + ((filas - 1) * gapY) + 12;
+                        data.cell.styles.minCellHeight = Math.max(data.cell.styles.minCellHeight || 0, altoNecesario);
+                    }
+                },
                 didDrawCell: function(data) {
                     if (
                         data.section === 'body' &&
@@ -322,16 +337,21 @@ $(document).ready(function(){
                     ) {
                         const imgs = data.row.raw.__imagenesMiniaturas;
                         if (imgs.length > 0) {
-                            let posX = data.cell.x + 6;
-                            let posY = data.cell.y + 6;
                             const width = 34;
                             const height = 28;
-                            const gap = 4;
+                            const gapX = 4;
+                            const gapY = 4;
+                            const porFila = 4;
+                            const baseX = data.cell.x + 6;
+                            const baseY = data.cell.y + 6;
                             for (let i = 0; i < imgs.length; i++) {
+                                const col = i % porFila;
+                                const row = Math.floor(i / porFila);
+                                const posX = baseX + (col * (width + gapX));
+                                const posY = baseY + (row * (height + gapY));
                                 try {
                                     doc.addImage(imgs[i], 'PNG', posX, posY, width, height);
                                 } catch (e) {}
-                                posX += width + gap;
                             }
                         }
                     }
