@@ -644,7 +644,7 @@ async function exportarTablaAPDF(resultados, filtrosAplicados) {
                 bodega_principal: {
                     content: [
                         { text: "Imágenes:", styles: { fontStyle: 'bold' } },
-                        { text: (imgsBase64.length > 0) ? "[miniaturas debajo]" : "—" }
+                        { text: (imgsBase64.length > 0) ? "" : "—" }
                     ].map(obj => obj.text).join("\n"),
                     colSpan: 3,
                     styles: { halign: 'left', fontStyle:'italic', cellWidth: 250 }
