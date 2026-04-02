@@ -1,4 +1,7 @@
 <?php 
+	if (session_status() == PHP_SESSION_NONE) {
+		session_start();
+	}
 	require_once "../../clases/Conexion.php";
 	$c= new conectar();
 	$conexion=$c->conexion(); 
@@ -28,6 +31,7 @@
 <?php
 // Obtener el subtipo de movimiento para exponerlo a JS
 $subtipoMovimiento = '';
+$bodegaActivaSesion = isset($_SESSION['bodega_seleccionada']) ? strval($_SESSION['bodega_seleccionada']) : '';
 $idmovimiento_sql = trim($idmovimiento, "'");
 $sqlSubtipo = "SELECT sub.sub_tipo FROM movimientos mov INNER JOIN sub_tipo_movimiento sub ON mov.id_sub_tipo_movimiento = sub.id_sub_tipo_movimiento WHERE mov.id_movimiento = '$idmovimiento_sql' LIMIT 1";
 $resultSubtipo = mysqli_query($conexion, $sqlSubtipo);
@@ -37,6 +41,7 @@ if ($resultSubtipo && $row = mysqli_fetch_row($resultSubtipo)) {
 ?>
 <script>
 window.subtipoMovimientoActivo = <?php echo json_encode(strtoupper($subtipoMovimiento)); ?>;
+window.bodegaActivaSesionDetalle = <?php echo json_encode($bodegaActivaSesion); ?>;
 // Aplicar ocultamiento al cargar la vista
 $(document).ready(function() {
 	if (typeof window.aplicarOcultamientoPorSubtipo === 'function') {
@@ -242,6 +247,22 @@ $(document).ready(function() {
 				placeholder: 'Buscar bodega...',
 				allowClear: true
 			});
+
+			function bloquearBodegaActivaDetalle() {
+				var bodegaActiva = window.bodegaActivaSesionDetalle || '';
+				if (!bodegaActiva && $('#bodega_seleccionada').length > 0) {
+					bodegaActiva = $('#bodega_seleccionada').val() || '';
+				}
+				var $almacen = $('#almacenSelect');
+				if (!bodegaActiva) return;
+				if ($almacen.find('option[value="' + bodegaActiva + '"]').length > 0) {
+					$almacen.val(bodegaActiva).trigger('change.select2');
+				}
+				$almacen.prop('disabled', true);
+				$almacen.trigger('change.select2');
+			}
+
+			bloquearBodegaActivaDetalle();
 			// --- FIN CAMBIO SELECT2 ---
 
 		});
@@ -379,7 +400,7 @@ inputArticulo.addEventListener("keypress", function(event) {
 			   var vestado= <?php echo $estado ?>;
 			   var vguardado= <?php echo $guardado ?>;
 			   var vidarticulo= $("#articuloSelect").val();
-			   var vidalmacen= $("#almacenSelect").val();
+			   var vidalmacen= window.bodegaActivaSesionDetalle || $("#almacenSelect").val();
 			   var vcantidad= $("#cantidad").val();
 			   var subtipo = window.subtipoMovimientoActivo || '';
 			   var vprecio = '';

@@ -137,6 +137,8 @@ if (!$acceso) {
 							} else {
 								$bodega.val($bodega.find('option').first().val()).trigger('change');
 							}
+							$bodega.prop('disabled', true);
+							$bodega.trigger('change.select2');
 						}
 						$(document).ready(function(){
 							function simplificarFormularioNuevoMovimiento() {
@@ -801,7 +803,7 @@ swal.fire({
 				 
 			   var vtipoSelect= $("#tipoSelect").val();
                var vsubtipoSelect= $("#subtipoSelect").val();
-			   var vbodegaSelect=$("#bodegaSelect").val();
+			   var vbodegaSelect=bodegaActivaSesion || $("#bodegaSelect").val();
                var vformapagoSelect=$("#formapagoSelect").val();
                var vnodocumento=$("#nodocumento").val();
 			   var vproveedorSelect=$("#proveedorSelect").val();

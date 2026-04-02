@@ -5,7 +5,9 @@
 	 
     $vidmovimiento=$_POST['id_movimiento'];
 	$vidarticulo=$_POST['id_articulo'];
-    $vidbodega_lugar=$_POST['id_bodega_lugar'];
+    $vidbodega_lugar=isset($_SESSION['bodega_seleccionada']) && $_SESSION['bodega_seleccionada'] !== ''
+		? $_SESSION['bodega_seleccionada']
+		: $_POST['id_bodega_lugar'];
     $vprecio=$_POST['precio'];
 	$vcantidad=$_POST['cantidad'];
 	$vlote=$_POST['lote']; 	  

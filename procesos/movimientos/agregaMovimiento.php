@@ -4,7 +4,9 @@
 	require_once "../../clases/Movimientos.php";
 	 
 	$idusuario=$_SESSION['iduser'];
-	$idbodega=$_POST['bodegaSelect'];
+	$idbodega=isset($_SESSION['bodega_seleccionada']) && $_SESSION['bodega_seleccionada'] !== ''
+		? $_SESSION['bodega_seleccionada']
+		: $_POST['bodegaSelect'];
     $idtipomovimiento=$_POST['tipoSelect'];
     $idsubtipomovimiento=$_POST['subtipoSelect'];
 	$idproveedor=$_POST['proveedorSelect'];
