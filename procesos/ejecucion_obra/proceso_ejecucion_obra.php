@@ -60,6 +60,30 @@ switch ($action) {
 		echo json_encode($ejecucionObra->obtener($id));
 		break;
 	case 'guardar':
+		$idOrden = isset($_POST['id_orden']) ? intval($_POST['id_orden']) : 0;
+		$idBodegaSesion = isset($_SESSION['bodega_seleccionada']) ? intval($_SESSION['bodega_seleccionada']) : 0;
+		if ($idOrden <= 0 || $idBodegaSesion <= 0) {
+			echo json_encode([
+				'id_ejecucion_obra' => 0,
+				'success' => false,
+				'mensaje' => 'Debe tener una bodega activa y seleccionar una orden válida.'
+			]);
+			exit;
+		}
+		$c = new conectar();
+		$conexion = $c->conexion();
+		$sqlValidacionOrden = "SELECT COUNT(*) AS total FROM ordenes_trabajo WHERE id_orden = $idOrden AND id_bodega_principal = $idBodegaSesion AND estado = 1";
+		$resValidacionOrden = mysqli_query($conexion, $sqlValidacionOrden);
+		$rowValidacionOrden = $resValidacionOrden ? mysqli_fetch_assoc($resValidacionOrden) : null;
+		$ordenPermitida = $rowValidacionOrden ? intval($rowValidacionOrden['total']) > 0 : false;
+		if (!$ordenPermitida) {
+			echo json_encode([
+				'id_ejecucion_obra' => 0,
+				'success' => false,
+				'mensaje' => 'La orden seleccionada no pertenece a la bodega activa.'
+			]);
+			exit;
+		}
 		$id = $ejecucionObra->guardar($_POST);
 		echo json_encode([
 			'id_ejecucion_obra' => $id,
@@ -71,7 +95,8 @@ switch ($action) {
 		echo json_encode($ejecucionObra->estados());
 		break;
 	case 'ordenes':
-		echo json_encode($ejecucionObra->ordenes());
+		$idBodegaSesion = isset($_SESSION['bodega_seleccionada']) ? intval($_SESSION['bodega_seleccionada']) : null;
+		echo json_encode($ejecucionObra->ordenes($idBodegaSesion));
 		break;
 	case 'articulos':
 		echo json_encode($ejecucionObra->articulos());

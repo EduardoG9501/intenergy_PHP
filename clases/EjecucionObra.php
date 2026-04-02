@@ -242,10 +242,15 @@
 		return $datos;
 	}
 
-	public function ordenes() {
+	public function ordenes($id_bodega = null) {
 		$c = new conectar();
 		$conexion = $c->conexion();
-		$sql = "SELECT id_orden, identificador FROM ordenes_trabajo WHERE estado = 1";
+		$filtro = '';
+		if (!empty($id_bodega)) {
+			$id_bodega = intval($id_bodega);
+			$filtro = " AND id_bodega_principal = $id_bodega";
+		}
+		$sql = "SELECT id_orden, identificador FROM ordenes_trabajo WHERE estado = 1 $filtro";
 		$result = mysqli_query($conexion, $sql);
 		$datos = [];
 		while ($fila = mysqli_fetch_assoc($result)) {
