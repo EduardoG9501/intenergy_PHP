@@ -101,6 +101,30 @@ if (isset($_SESSION['usuario'])) {
             border-bottom: 1px dashed #b8d6ef;
             padding-bottom: 4px;
         }
+        #imgZoomModalReporte {
+            display: none;
+            position: fixed;
+            z-index: 99999;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(44, 62, 80, 0.35);
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+        }
+        #imgZoomModalReporte.visible {
+            display: flex;
+        }
+        #imgZoomModalReporte img {
+            max-width: 90vw;
+            max-height: 90vh;
+            box-shadow: 0 2px 28px #3393cb;
+            border-radius: 14px;
+            border: 4px solid #cde6fe;
+            background: #fff;
+        }
     </style>
 </head>
 <body>
@@ -261,7 +285,11 @@ function getBase64Image(img) {
 window.REPORTE_EJECUCION_ENDPOINT = '../procesos/reportes/liquidacion_trabajo.php';
 window.REPORTE_EJECUCION_TITULO = 'LIQUIDACION DE TRABAJO';
 window.REPORTE_EJECUCION_ARCHIVO = 'liquidacion_trabajo';
+window.REPORTE_INFORMES_INCLUYE_ORDEN = true;
 </script>
+<div id="imgZoomModalReporte">
+    <img src="" id="imgZoomModalReporteImg" alt="Zoom Imagen" />
+</div>
 <script src="../librerias/alertifyjs/alertify.min.js"></script>
 <script src="../js/reporte_ejecucion_obra.js"></script>
 <script src="../js/liquidacion_trabajo.js"></script>

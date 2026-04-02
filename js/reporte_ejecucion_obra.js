@@ -11,6 +11,10 @@ var reporteTitulo = window.REPORTE_EJECUCION_TITULO || 'REPORTE DE EJECUCIÓN DE
 var reporteArchivoBase = window.REPORTE_EJECUCION_ARCHIVO || 'reporte_ejecucion_obra';
 var esLiquidacionTrabajo = (reporteArchivoBase === 'liquidacion_trabajo');
 
+function incluyeOrdenTrabajoInformes() {
+    return !!window.REPORTE_INFORMES_INCLUYE_ORDEN;
+}
+
 function normalizarRutaImagenInforme(ruta) {
     if (!ruta) return '';
     if (/^https?:\/\//i.test(ruta) || ruta.startsWith('data:')) return ruta;
@@ -229,33 +233,54 @@ $(document).ready(function(){
         const informesWidth = doc.getTextWidth('INFORMES DIARIOS');
         doc.line(50, filtroY + 3, 50 + informesWidth, filtroY + 3);
         filtroY += 16;
+        const incluirOrdenTrabajo = incluyeOrdenTrabajoInformes();
         const encabezadoInformes = informesOriginal.map(function(r) {
-            return [
+            let fila = [
                 r.id_informe ?? '',
                 r.nombre_obra ?? r.obra ?? '',
-                r.fecha ?? '',
-                r.lugar ?? '',
-                r.ubicacion ?? '',
-                r.observacion ?? ''
             ];
+            if (incluirOrdenTrabajo) {
+                fila.push(r.orden_trabajo ?? '');
+            }
+            fila.push(r.fecha ?? '');
+            fila.push(r.lugar ?? '');
+            fila.push(r.ubicacion ?? '');
+            fila.push(r.observacion ?? '');
+            return fila;
         });
 
-        doc.autoTable({
-            startY: filtroY,
-            head: [['ID INFORME','NOMBRE DE LA OBRA','FECHA','LUGAR','UBICACIÓN','OBSERVACIÓN']],
-            body: encabezadoInformes,
-            styles: { fontSize: 8, cellPadding: 3, halign: 'center', valign: 'middle' },
-            headStyles: headerStyles,
-            alternateRowStyles: altRowStyles,
-            margin: { left: 40, right: 40 },
-            columnStyles: {
+        const headInformes = incluirOrdenTrabajo
+            ? [['ID INFORME','NOMBRE DE LA OBRA','ORDEN TRABAJO','FECHA','LUGAR','UBICACIÓN','OBSERVACIÓN']]
+            : [['ID INFORME','NOMBRE DE LA OBRA','FECHA','LUGAR','UBICACIÓN','OBSERVACIÓN']];
+
+        const columnStylesInformes = incluirOrdenTrabajo
+            ? {
+                0: { cellWidth: 50 },
+                1: { cellWidth: 130, halign: 'left' },
+                2: { cellWidth: 95, halign: 'left' },
+                3: { cellWidth: 70 },
+                4: { cellWidth: 70 },
+                5: { cellWidth: 85 },
+                6: { cellWidth: 262, halign: 'left' }
+            }
+            : {
                 0: { cellWidth: 58 },
                 1: { cellWidth: 170, halign: 'left' },
                 2: { cellWidth: 78 },
                 3: { cellWidth: 78 },
                 4: { cellWidth: 90 },
                 5: { cellWidth: 286, halign: 'left' }
-            }
+            };
+
+        doc.autoTable({
+            startY: filtroY,
+            head: headInformes,
+            body: encabezadoInformes,
+            styles: { fontSize: 8, cellPadding: 3, halign: 'center', valign: 'middle' },
+            headStyles: headerStyles,
+            alternateRowStyles: altRowStyles,
+            margin: { left: 40, right: 40 },
+            columnStyles: columnStylesInformes
         });
 
         filtroY = doc.lastAutoTable.finalY + 10;
@@ -586,6 +611,11 @@ $(document).ready(function(){
             bottom: { style: 'thick', color: { argb: '2986C5' } }
         };
         let headerRowInf = sheet.addRow(['ID INFORME','NOMBRE DE LA OBRA','FECHA','LUGAR','UBICACION','OBSERVACIÓN']);
+        const incluirOrdenTrabajo = incluyeOrdenTrabajoInformes();
+        const baseColumnsBeforeImages = incluirOrdenTrabajo ? 3 : 2;
+        headerRowInf.values = incluirOrdenTrabajo
+            ? ['ID INFORME','NOMBRE DE LA OBRA','ORDEN TRABAJO','FECHA','LUGAR','UBICACION','OBSERVACIÓN']
+            : ['ID INFORME','NOMBRE DE LA OBRA','FECHA','LUGAR','UBICACION','OBSERVACIÓN'];
         headerRowInf.eachCell((cell) => {
             cell.fill = {
                 type: 'pattern',
@@ -603,14 +633,19 @@ $(document).ready(function(){
         });
 
         for (const r of informesOriginal) {
-            let filaEncabezadoInforme = sheet.addRow([
+            let filaEncabezadoValores = [
                 r.id_informe ?? '',
-                r.nombre_obra ?? r.obra ?? '',
-                r.fecha ?? '',
-                r.lugar ?? '',
-                r.ubicacion ?? '',
-                r.observacion ?? ''
-            ]);
+                r.nombre_obra ?? r.obra ?? ''
+            ];
+            if (incluirOrdenTrabajo) {
+                filaEncabezadoValores.push(r.orden_trabajo ?? '');
+            }
+            filaEncabezadoValores.push(r.fecha ?? '');
+            filaEncabezadoValores.push(r.lugar ?? '');
+            filaEncabezadoValores.push(r.ubicacion ?? '');
+            filaEncabezadoValores.push(r.observacion ?? '');
+
+            let filaEncabezadoInforme = sheet.addRow(filaEncabezadoValores);
             filaEncabezadoInforme.eachCell((cell) => {
                 cell.font = { bold: true, color: { argb: '000000' }, size: 8 };
                 cell.fill = {
@@ -628,6 +663,7 @@ $(document).ready(function(){
             let detalleInforme = sheet.addRow([
                 'Artículos:\n' + textoArticulosInforme(r.articulos),
                 'Empleados:\n' + textoEmpleadosInforme(r.empleados),
+                ...(incluirOrdenTrabajo ? [''] : []),
                 ...Array(maxImagenesInforme).fill(''),
                 'Descripción:\n' + textoDescripcionInforme(r.descripcion)
             ]);
@@ -651,7 +687,7 @@ $(document).ready(function(){
                         base64: base64,
                         extension: 'png'
                     });
-                    const columnaImagen = 3 + i;
+                    const columnaImagen = (baseColumnsBeforeImages + 1) + i;
                     sheet.addImage(imageId, {
                         tl: { col: columnaImagen - 1 + 0.08, row: detalleInforme.number - 1 + 0.1 },
                         ext: { width: 58, height: 44 },
@@ -663,12 +699,15 @@ $(document).ready(function(){
 
         if (maxImagenesInforme > 0) {
             for (let i = 0; i < maxImagenesInforme; i++) {
-                sheet.getColumn(3 + i).width = 12;
+                sheet.getColumn((baseColumnsBeforeImages + 1) + i).width = 12;
             }
         }
         sheet.getColumn(1).width = 38;
         sheet.getColumn(2).width = 28;
-        sheet.getColumn(3 + maxImagenesInforme).width = 40;
+        if (incluirOrdenTrabajo) {
+            sheet.getColumn(3).width = 20;
+        }
+        sheet.getColumn((baseColumnsBeforeImages + 1) + maxImagenesInforme).width = 40;
 
         // LIQUIDACION AL FINAL (solo para liquidación de trabajo)
         if (esLiquidacionTrabajo && $('#txtManoObra').length && ($('#txtManoObra').val() || '').trim() !== '') {
@@ -953,27 +992,56 @@ function cargarInformes() {
 }
 function pintarTablaInformes(informes) {
     let $tabla = $('#tablaInformesDiariosEjecucionObra');
+    let $thead = $tabla.find('thead');
     let $tbody = $tabla.find('tbody');
     let detallesFilas = [];
+    let incluirOrdenTrabajo = incluyeOrdenTrabajoInformes();
+
+    // Mantiene alineada la cabecera con las columnas que se renderizan en filas.
+    if (incluirOrdenTrabajo) {
+        $thead.html(`<tr>
+            <th>ID INFORME</th>
+            <th>NOMBRE DE LA OBRA</th>
+            <th>ORDEN TRABAJO</th>
+            <th>FECHA</th>
+            <th>LUGAR</th>
+            <th>UBICACIÓN</th>
+            <th>OBSERVACIÓN</th>
+        </tr>`);
+    } else {
+        $thead.html(`<tr>
+            <th>ID INFORME</th>
+            <th>NOMBRE DE LA OBRA</th>
+            <th>FECHA</th>
+            <th>LUGAR</th>
+            <th>UBICACIÓN</th>
+            <th>OBSERVACIÓN</th>
+        </tr>`);
+    }
+
     $tbody.html('');
     if ( $.fn.DataTable.isDataTable($tabla) ) {
         $tabla.DataTable().clear().destroy();
     }
     if(!Array.isArray(informes) || informes.length === 0){
         let vacio = '<tr>';
-        for(let i=0;i<6;i++) vacio += '<td></td>';
+        for(let i=0;i<(incluirOrdenTrabajo ? 7 : 6);i++) vacio += '<td></td>';
         vacio += '</tr>';
         $tbody.append(vacio);
     } else {
         informes.forEach(r => {
-            let rowHtml = `<tr>
-                <td>${r.id_informe ?? ''}</td>
-                <td>${r.nombre_obra ?? r.obra ?? ''}</td>
-                <td>${r.fecha ?? ''}</td>
-                <td>${r.lugar ?? ''}</td>
-                <td>${r.ubicacion ?? ''}</td>
-                <td>${r.observacion ?? ''}</td>
-            </tr>`;
+            let columnas = [
+                `<td>${r.id_informe ?? ''}</td>`,
+                `<td>${r.nombre_obra ?? r.obra ?? ''}</td>`
+            ];
+            if (incluirOrdenTrabajo) {
+                columnas.push(`<td>${r.orden_trabajo ?? ''}</td>`);
+            }
+            columnas.push(`<td>${r.fecha ?? ''}</td>`);
+            columnas.push(`<td>${r.lugar ?? ''}</td>`);
+            columnas.push(`<td>${r.ubicacion ?? ''}</td>`);
+            columnas.push(`<td>${r.observacion ?? ''}</td>`);
+            let rowHtml = `<tr>${columnas.join('')}</tr>`;
 
             let listaArticulos = (r.articulos || []).map(function(a){
                 return `<li>${a.nombre || ''} (${a.cantidad || 0}) [Lote: ${a.lote || '-'}]</li>`;
