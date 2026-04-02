@@ -654,7 +654,7 @@ class Reporte {
         }
         $where = count($w) ? "WHERE ".implode(" AND ", $w) : "";
 
-        $sql = "SELECT it.id_informe, ob.nombre AS obra, ot.identificador AS orden_trabajo, it.fecha,
+        $sql = "SELECT it.id_informe, ob.nombre AS nombre_obra, ot.identificador AS orden_trabajo, it.fecha,
             bp.nombreBodega AS lugar,
             bs.nombreBodega AS ubicacion,
             it.observacion, it.descripcion
@@ -670,6 +670,48 @@ class Reporte {
         $result = mysqli_query($conexion, $sql);
         $informes = [];
         while ($row = mysqli_fetch_assoc($result)) {
+            $idInforme = intval($row['id_informe']);
+
+            $articulos = [];
+            $sqlArticulos = "SELECT a.nombre, ita.cantidad, ita.lote
+                            FROM informe_trabajo_articulo ita
+                            INNER JOIN articulos a ON ita.id_producto = a.id_producto
+                            WHERE ita.id_informe = $idInforme";
+            $resultArticulos = mysqli_query($conexion, $sqlArticulos);
+            while ($a = mysqli_fetch_assoc($resultArticulos)) {
+                $articulos[] = $a;
+            }
+
+            $empleados = [];
+            $sqlEmpleadosInternos = "SELECT e.nombres_apellidos
+                                    FROM informe_trabajo_empleado ite
+                                    INNER JOIN empleados e ON ite.id_empleado = e.id_empleados
+                                    WHERE ite.id_informe = $idInforme";
+            $resultEmpleadosInternos = mysqli_query($conexion, $sqlEmpleadosInternos);
+            while ($e = mysqli_fetch_assoc($resultEmpleadosInternos)) {
+                $empleados[] = $e['nombres_apellidos'];
+            }
+
+            $sqlEmpleadosExternos = "SELECT e.nombres_apellidos
+                                    FROM informe_trabajo_empleado_externo itee
+                                    INNER JOIN empleados e ON itee.id_empleado_externo = e.id_empleados
+                                    WHERE itee.id_informe = $idInforme";
+            $resultEmpleadosExternos = mysqli_query($conexion, $sqlEmpleadosExternos);
+            while ($e = mysqli_fetch_assoc($resultEmpleadosExternos)) {
+                $empleados[] = $e['nombres_apellidos'];
+            }
+
+            $imagenes = [];
+            $sqlImagenes = "SELECT ruta FROM informe_trabajo_imagen WHERE id_informe = $idInforme";
+            $resultImagenes = mysqli_query($conexion, $sqlImagenes);
+            while ($img = mysqli_fetch_assoc($resultImagenes)) {
+                $imagenes[] = $img['ruta'];
+            }
+
+            $row['obra'] = $row['nombre_obra'];
+            $row['articulos'] = $articulos;
+            $row['empleados'] = array_values(array_unique($empleados));
+            $row['imagenes'] = $imagenes;
             $informes[] = $row;
         }
         return $informes;

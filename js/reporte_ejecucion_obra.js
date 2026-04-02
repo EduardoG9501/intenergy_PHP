@@ -11,6 +11,29 @@ var reporteTitulo = window.REPORTE_EJECUCION_TITULO || 'REPORTE DE EJECUCIÓN DE
 var reporteArchivoBase = window.REPORTE_EJECUCION_ARCHIVO || 'reporte_ejecucion_obra';
 var esLiquidacionTrabajo = (reporteArchivoBase === 'liquidacion_trabajo');
 
+function normalizarRutaImagenInforme(ruta) {
+    if (!ruta) return '';
+    if (/^https?:\/\//i.test(ruta) || ruta.startsWith('data:')) return ruta;
+    if (ruta.startsWith('../')) return ruta;
+    return '../' + ruta.replace(/^\/+/, '');
+}
+
+function textoArticulosInforme(articulos) {
+    if (!Array.isArray(articulos) || articulos.length === 0) return '—';
+    return articulos
+        .map(function(a){ return (a.nombre || '') + ' (' + (a.cantidad || 0) + ') [Lote: ' + (a.lote || '-') + ']'; })
+        .join('\n');
+}
+
+function textoEmpleadosInforme(empleados) {
+    if (!Array.isArray(empleados) || empleados.length === 0) return '—';
+    return empleados.join('\n');
+}
+
+function textoDescripcionInforme(descripcion) {
+    return (descripcion && String(descripcion).trim() !== '') ? descripcion : '—';
+}
+
 $(document).ready(function(){
     cargarProyectos();
     cargarObras('');
@@ -206,14 +229,117 @@ $(document).ready(function(){
         const informesWidth = doc.getTextWidth('INFORMES DIARIOS');
         doc.line(50, filtroY + 3, 50 + informesWidth, filtroY + 3);
         filtroY += 16;
+        const encabezadoInformes = informesOriginal.map(function(r) {
+            return [
+                r.id_informe ?? '',
+                r.nombre_obra ?? r.obra ?? '',
+                r.fecha ?? '',
+                r.lugar ?? '',
+                r.ubicacion ?? '',
+                r.observacion ?? ''
+            ];
+        });
+
         doc.autoTable({
             startY: filtroY,
-            head: [['ID INFORME','NOMBRE DE LA OBRA','ORDEN TRABAJO','FECHA','LUGAR','UBICACION','OBSERVACIÓN']],
-            body: informesOriginal.map(r => [r.id_informe ?? '', r.obra ?? '', r.orden_trabajo ?? '', r.fecha ?? '', r.lugar ?? '', r.ubicacion ?? '', r.observacion ?? '']),
-            styles: rowStyles,
+            head: [['ID INFORME','NOMBRE DE LA OBRA','FECHA','LUGAR','UBICACIÓN','OBSERVACIÓN']],
+            body: encabezadoInformes,
+            styles: { fontSize: 8, cellPadding: 3, halign: 'center', valign: 'middle' },
             headStyles: headerStyles,
             alternateRowStyles: altRowStyles,
+            margin: { left: 40, right: 40 },
+            columnStyles: {
+                0: { cellWidth: 58 },
+                1: { cellWidth: 170, halign: 'left' },
+                2: { cellWidth: 78 },
+                3: { cellWidth: 78 },
+                4: { cellWidth: 90 },
+                5: { cellWidth: 286, halign: 'left' }
+            }
         });
+
+        filtroY = doc.lastAutoTable.finalY + 10;
+
+        for (const r of informesOriginal) {
+            if (filtroY > doc.internal.pageSize.getHeight() - 120) {
+                doc.addPage();
+                filtroY = 50;
+            }
+
+            doc.setFontSize(9);
+            doc.setTextColor(44, 62, 80);
+            doc.text('Detalle Informe #' + (r.id_informe ?? ''), 50, filtroY);
+            filtroY += 6;
+
+            let imagenesMiniatura = [];
+            if (Array.isArray(r.imagenes)) {
+                for (let i = 0; i < r.imagenes.length; i++) {
+                    const rutaImagen = normalizarRutaImagenInforme(r.imagenes[i]);
+                    if (!rutaImagen) continue;
+                    const base64 = await imageUrlToDataUrl(rutaImagen);
+                    if (base64) imagenesMiniatura.push(base64);
+                    if (imagenesMiniatura.length >= 4) break;
+                }
+            }
+
+            const detalleRow = [{
+                articulos: textoArticulosInforme(r.articulos),
+                empleados: textoEmpleadosInforme(r.empleados),
+                imagenes: imagenesMiniatura.length > 0 ? '' : '—',
+                descripcion: textoDescripcionInforme(r.descripcion),
+                __imagenesMiniaturas: imagenesMiniatura
+            }];
+
+            doc.autoTable({
+                startY: filtroY,
+                columns: [
+                    { header: 'ARTÍCULOS', dataKey: 'articulos' },
+                    { header: 'EMPLEADOS', dataKey: 'empleados' },
+                    { header: 'IMÁGENES', dataKey: 'imagenes' },
+                    { header: 'DESCRIPCIÓN', dataKey: 'descripcion' }
+                ],
+                body: detalleRow,
+                styles: { fontSize: 8, cellPadding: 4, valign: 'top', halign: 'left' },
+                headStyles: {
+                    fillColor: [200, 226, 245],
+                    textColor: [31, 72, 106],
+                    fontStyle: 'bold',
+                    halign: 'center'
+                },
+                margin: { left: 40, right: 40 },
+                columnStyles: {
+                    0: { cellWidth: 220 },
+                    1: { cellWidth: 170 },
+                    2: { cellWidth: 160, halign: 'center' },
+                    3: { cellWidth: 210 }
+                },
+                didDrawCell: function(data) {
+                    if (
+                        data.section === 'body' &&
+                        data.row.raw &&
+                        Array.isArray(data.row.raw.__imagenesMiniaturas) &&
+                        data.column.index === 2
+                    ) {
+                        const imgs = data.row.raw.__imagenesMiniaturas;
+                        if (imgs.length > 0) {
+                            let posX = data.cell.x + 6;
+                            let posY = data.cell.y + 6;
+                            const width = 34;
+                            const height = 28;
+                            const gap = 4;
+                            for (let i = 0; i < imgs.length; i++) {
+                                try {
+                                    doc.addImage(imgs[i], 'PNG', posX, posY, width, height);
+                                } catch (e) {}
+                                posX += width + gap;
+                            }
+                        }
+                    }
+                }
+            });
+
+            filtroY = doc.lastAutoTable.finalY + 8;
+        }
 
         // LIQUIDACION AL FINAL (solo para liquidación de trabajo)
         if (esLiquidacionTrabajo) {
@@ -439,7 +565,7 @@ $(document).ready(function(){
         informesLine.getCell(1).border = {
             bottom: { style: 'thick', color: { argb: '2986C5' } }
         };
-        let headerRowInf = sheet.addRow(['ID INFORME','NOMBRE DE LA OBRA','ORDEN TRABAJO','FECHA','LUGAR','UBICACION','OBSERVACIÓN']);
+        let headerRowInf = sheet.addRow(['ID INFORME','NOMBRE DE LA OBRA','FECHA','LUGAR','UBICACION','OBSERVACIÓN']);
         headerRowInf.eachCell((cell) => {
             cell.fill = {
                 type: 'pattern',
@@ -449,9 +575,80 @@ $(document).ready(function(){
             cell.font = { bold: true, color: { argb: 'FFFFFF' }, size: 8 };
             cell.alignment = { horizontal: 'center' };
         });
+        let maxImagenesInforme = 0;
         informesOriginal.forEach(r => {
-            sheet.addRow([r.id_informe ?? '', r.obra ?? '', r.orden_trabajo ?? '', r.fecha ?? '', r.lugar ?? '', r.ubicacion ?? '', r.observacion ?? '']);
+            if (Array.isArray(r.imagenes)) {
+                maxImagenesInforme = Math.max(maxImagenesInforme, r.imagenes.length);
+            }
         });
+
+        for (const r of informesOriginal) {
+            let filaEncabezadoInforme = sheet.addRow([
+                r.id_informe ?? '',
+                r.nombre_obra ?? r.obra ?? '',
+                r.fecha ?? '',
+                r.lugar ?? '',
+                r.ubicacion ?? '',
+                r.observacion ?? ''
+            ]);
+            filaEncabezadoInforme.eachCell((cell) => {
+                cell.font = { bold: true, color: { argb: '000000' }, size: 8 };
+                cell.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'DAECF7' }
+                };
+                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                cell.border = {
+                    top: { style: 'thin' }, left: { style: 'thin' },
+                    bottom: { style: 'thin' }, right: { style: 'thin' }
+                };
+            });
+
+            let detalleInforme = sheet.addRow([
+                'Artículos:\n' + textoArticulosInforme(r.articulos),
+                'Empleados:\n' + textoEmpleadosInforme(r.empleados),
+                ...Array(maxImagenesInforme).fill(''),
+                'Descripción:\n' + textoDescripcionInforme(r.descripcion)
+            ]);
+            detalleInforme.height = 52;
+            detalleInforme.eachCell((cell) => {
+                cell.font = { size: 8 };
+                cell.alignment = { horizontal: 'left', vertical: 'top', wrapText: true };
+                cell.border = {
+                    top: { style: 'thin' }, left: { style: 'thin' },
+                    bottom: { style: 'thin' }, right: { style: 'thin' }
+                };
+            });
+
+            if (Array.isArray(r.imagenes)) {
+                for (let i = 0; i < r.imagenes.length; i++) {
+                    const rutaImagen = normalizarRutaImagenInforme(r.imagenes[i]);
+                    if (!rutaImagen) continue;
+                    const base64 = await imageUrlToDataUrl(rutaImagen);
+                    if (!base64) continue;
+                    const imageId = workbook.addImage({
+                        base64: base64,
+                        extension: 'png'
+                    });
+                    const columnaImagen = 3 + i;
+                    sheet.addImage(imageId, {
+                        tl: { col: columnaImagen - 1 + 0.08, row: detalleInforme.number - 1 + 0.1 },
+                        ext: { width: 58, height: 44 },
+                        editAs: 'absolute'
+                    });
+                }
+            }
+        }
+
+        if (maxImagenesInforme > 0) {
+            for (let i = 0; i < maxImagenesInforme; i++) {
+                sheet.getColumn(3 + i).width = 12;
+            }
+        }
+        sheet.getColumn(1).width = 38;
+        sheet.getColumn(2).width = 28;
+        sheet.getColumn(3 + maxImagenesInforme).width = 40;
 
         // LIQUIDACION AL FINAL (solo para liquidación de trabajo)
         if (esLiquidacionTrabajo && $('#txtManoObra').length && ($('#txtManoObra').val() || '').trim() !== '') {
@@ -737,28 +934,101 @@ function cargarInformes() {
 function pintarTablaInformes(informes) {
     let $tabla = $('#tablaInformesDiariosEjecucionObra');
     let $tbody = $tabla.find('tbody');
+    let detallesFilas = [];
     $tbody.html('');
     if ( $.fn.DataTable.isDataTable($tabla) ) {
         $tabla.DataTable().clear().destroy();
     }
     if(!Array.isArray(informes) || informes.length === 0){
         let vacio = '<tr>';
-        for(let i=0;i<7;i++) vacio += '<td></td>';
+        for(let i=0;i<6;i++) vacio += '<td></td>';
         vacio += '</tr>';
         $tbody.append(vacio);
     } else {
         informes.forEach(r => {
             let rowHtml = `<tr>
                 <td>${r.id_informe ?? ''}</td>
-                <td>${r.obra ?? ''}</td>
-                <td>${r.orden_trabajo ?? ''}</td>
+                <td>${r.nombre_obra ?? r.obra ?? ''}</td>
                 <td>${r.fecha ?? ''}</td>
                 <td>${r.lugar ?? ''}</td>
                 <td>${r.ubicacion ?? ''}</td>
                 <td>${r.observacion ?? ''}</td>
             </tr>`;
+
+            let listaArticulos = (r.articulos || []).map(function(a){
+                return `<li>${a.nombre || ''} (${a.cantidad || 0}) [Lote: ${a.lote || '-'}]</li>`;
+            }).join('');
+            if (!listaArticulos) listaArticulos = '<li>—</li>';
+
+            let listaEmpleados = (r.empleados || []).map(function(e){
+                return `<li>${e}</li>`;
+            }).join('');
+            if (!listaEmpleados) listaEmpleados = '<li>—</li>';
+
+            let imagenesHtml = (r.imagenes || []).map(function(img){
+                const ruta = normalizarRutaImagenInforme(img);
+                if (!ruta) return '';
+                return `<img src="${ruta}" class="img-zoom-thumb-reporte" style="max-width:110px;max-height:90px;margin:4px 4px 2px 0;border-radius:4px;box-shadow:0 1px 4px #aaa;">`;
+            }).join('');
+            if (!imagenesHtml) imagenesHtml = '<span>—</span>';
+
+            let detalleHtml = `<div class="detalle-informe-row" style="padding:8px 10px;">
+                <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;">
+                    <div style="min-width:220px;flex:1;">
+                        <b>Artículos:</b>
+                        <ul style="margin:4px 0 0 18px;padding:0;">${listaArticulos}</ul>
+                    </div>
+                    <div style="min-width:220px;flex:1;">
+                        <b>Empleados:</b>
+                        <ul style="margin:4px 0 0 18px;padding:0;">${listaEmpleados}</ul>
+                    </div>
+                    <div style="min-width:220px;flex:1;">
+                        <b>Imágenes:</b><br>${imagenesHtml}
+                    </div>
+                    <div style="min-width:220px;flex:1;">
+                        <b>Descripción:</b>
+                        <div style="margin-top:4px;white-space:pre-line;">${textoDescripcionInforme(r.descripcion)}</div>
+                    </div>
+                </div>
+            </div>`;
             $tbody.append(rowHtml);
+            detallesFilas.push(detalleHtml);
         });
     }
-    $tabla.DataTable({responsive:true, destroy:true, order:[], searching:true});
+    let dt = $tabla.DataTable({responsive:true, destroy:true, order:[], searching:true});
+
+    if (detallesFilas.length > 0) {
+        dt.rows().every(function(rowIdx) {
+            const detalle = detallesFilas[rowIdx] || '';
+            if (detalle) {
+                this.child(detalle).show();
+                $(this.node()).addClass('shown');
+            }
+        });
+    }
 }
+
+$(document).on('mouseenter', '.img-zoom-thumb-reporte', function(){
+    let src = $(this).attr('src');
+    let modal = $('#imgZoomModalReporte');
+    $('#imgZoomModalReporteImg').attr('src', src || '');
+    modal.addClass('visible');
+});
+
+$(document).on('mouseleave', '.img-zoom-thumb-reporte', function(){
+    setTimeout(function(){
+        $('#imgZoomModalReporte').removeClass('visible');
+    }, 220);
+});
+
+$('#imgZoomModalReporte').on('click', function(e){
+    if (!$(e.target).is('#imgZoomModalReporteImg')) {
+        $('#imgZoomModalReporte').removeClass('visible');
+    }
+});
+
+$(document).on('keydown', function(e){
+    if (e.key === 'Escape') {
+        $('#imgZoomModalReporte').removeClass('visible');
+    }
+});

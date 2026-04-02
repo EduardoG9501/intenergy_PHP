@@ -34,6 +34,38 @@ if (!$acceso) {
             tfoot tr { background: #2986c5 !important; color: #fff !important; font-weight: bold; }
             tfoot td { font-size: 16px; }
             /* Borde azul eliminado de la última columna de Materiales */
+            #imgZoomModalReporte {
+                display: none;
+                position: fixed;
+                z-index: 99999;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(44, 62, 80, 0.35);
+                cursor: pointer;
+                align-items: center;
+                justify-content: center;
+            }
+            #imgZoomModalReporte.visible {
+                display: flex;
+            }
+            #imgZoomModalReporte img {
+                max-width: 90vw;
+                max-height: 90vh;
+                box-shadow: 0 2px 28px #3393cb;
+                border-radius: 14px;
+                border: 4px solid #cde6fe;
+                background: #fff;
+            }
+            .img-zoom-thumb-reporte {
+                cursor: zoom-in;
+                transition: box-shadow 0.2s, border 0.2s;
+            }
+            .img-zoom-thumb-reporte:hover {
+                box-shadow: 0 2px 12px #3393cb;
+                border: 2px solid #cde6fe;
+            }
         </style>
 </head>
 <body>
@@ -144,7 +176,6 @@ if (!$acceso) {
                 <tr>
                     <th>ID INFORME</th>
                     <th>NOMBRE DE LA OBRA</th>
-                    <th>ORDEN TRABAJO</th>
                     <th>FECHA</th>
                     <th>LUGAR</th>
                     <th>UBICACIÓN</th>
@@ -156,7 +187,7 @@ if (!$acceso) {
             </tbody>
         </table>
         <div id="detalleInformesDiarios">
-            <!-- Aquí se mostrarán los detalles: Artículos, Empleado, Descripción, Imagen -->
+            <!-- Aquí se mostrarán los detalles: Artículos, Empleados, Imágenes, Descripción -->
         </div>
     </div>
 </div>
@@ -174,6 +205,9 @@ function getBase64Image(img) {
 </script>
     <script src="../librerias/alertifyjs/alertify.min.js"></script>
     <script src="../js/reporte_ejecucion_obra.js"></script>
+    <div id="imgZoomModalReporte">
+        <img src="" id="imgZoomModalReporteImg" alt="Zoom Imagen" />
+    </div>
 </body>
 </html>
 <?php 
