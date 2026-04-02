@@ -53,7 +53,9 @@ switch ($action) {
 		}
 		break;
 	case 'listar':
-		echo json_encode($ejecucionObra->listar());
+		$idOrden = isset($_GET['id_orden']) ? intval($_GET['id_orden']) : null;
+		$idBodegaSesion = isset($_SESSION['bodega_seleccionada']) ? intval($_SESSION['bodega_seleccionada']) : null;
+		echo json_encode($ejecucionObra->listar($idOrden, $idBodegaSesion));
 		break;
 	case 'obtener':
 		$id = $_GET['id_ejecucion_obra'];

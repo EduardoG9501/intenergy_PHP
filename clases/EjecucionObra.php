@@ -114,13 +114,19 @@
 		       return $row ? floatval($row['cantidad']) : 0;
 	       }
 	// --- CRUD principal ---
-	public function listar() {
+	public function listar($id_orden = null, $id_bodega = null) {
 		$c = new conectar();
 		$conexion = $c->conexion();
+		$filtros = [];
+		if (!empty($id_orden) && is_numeric($id_orden)) {
+			$filtros[] = "eo.id_orden = " . intval($id_orden);
+		}
+		if (!empty($id_bodega) && is_numeric($id_bodega)) {
+			$filtros[] = "ot.id_bodega_principal = " . intval($id_bodega);
+		}
 		$where = '';
-		if (isset($_GET['id_orden']) && is_numeric($_GET['id_orden'])) {
-			$id_orden = intval($_GET['id_orden']);
-			$where = " WHERE eo.id_orden = $id_orden ";
+		if (!empty($filtros)) {
+			$where = ' WHERE ' . implode(' AND ', $filtros);
 		}
 		$sql = "SELECT eo.*, ot.identificador AS orden_identificador, ot.observacion AS orden_descripcion, eeo.estado AS estado_nombre
 				FROM ejecucion_obra eo
