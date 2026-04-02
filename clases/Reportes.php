@@ -452,7 +452,7 @@ class Reporte {
     public function reportePedidoMateriales($desde, $hasta, $proyecto, $obra, $articulo, $lugar) {
         $c = new conectar();
         $conexion = $c->conexion();
-        $where = [];
+        $where = ["pm.id_estado_pedido_material = 1"];
         if ($desde != '' && $hasta != '') {
             $where[] = "pm.fecha_solicitud BETWEEN '".mysqli_real_escape_string($conexion, $desde)."' AND '".mysqli_real_escape_string($conexion, $hasta)."'";
         }
