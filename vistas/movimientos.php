@@ -422,10 +422,27 @@ function getTodayStr() {
     return yyyy + '-' + mm + '-' + dd;
 }
 
+// Convierte fecha yyyy-mm-dd a Date local (evita desfase por zona horaria)
+function parseLocalDate(dateStr) {
+	if (!dateStr || typeof dateStr !== 'string') return null;
+	var parts = dateStr.split('-');
+	if (parts.length !== 3) return null;
+	var y = parseInt(parts[0], 10);
+	var m = parseInt(parts[1], 10);
+	var d = parseInt(parts[2], 10);
+	if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
+	return new Date(y, m - 1, d);
+}
+
+function getTodayDateLocal() {
+	return parseLocalDate(getTodayStr());
+}
+
 // Diferencia en días entre dos fechas (date1 y date2 en yyyy-mm-dd)
 function daysBetween(date1, date2) {
-    var d1 = new Date(date1);
-    var d2 = new Date(date2);
+	var d1 = parseLocalDate(date1);
+	var d2 = parseLocalDate(date2);
+	if (!d1 || !d2) return 0;
     d1.setHours(0,0,0,0);
     d2.setHours(0,0,0,0);
     return Math.floor((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
@@ -435,11 +452,26 @@ function daysBetween(date1, date2) {
 $(document).ready(function() {
     $('#fechapago').attr('min', getTodayStr());
 
+	function esComprasNuevo() {
+		return $('#subtipoSelect option:selected').text().trim().toUpperCase() === 'COMPRAS';
+	}
+
+	function recalcularDiasPagoNuevoPorFechas() {
+		if (!esComprasNuevo()) return;
+		var fechaDocumento = $('#fechadocumento').val();
+		var fechaPago = $('#fechapago').val();
+		if (fechaDocumento && fechaPago) {
+			var diffDays = daysBetween(fechaDocumento, fechaPago);
+			$('#diapago').val(diffDays);
+		}
+	}
+
     function actualizarFechaPago() {
         var fechaDocumento = $('#fechadocumento').val();
         var diasPago = parseInt($('#diapago').val());
         if (fechaDocumento && !isNaN(diasPago)) {
-            var fecha = new Date(fechaDocumento);
+			var fecha = parseLocalDate(fechaDocumento);
+			if (!fecha) return;
             fecha.setDate(fecha.getDate() + diasPago);
             var yyyy = fecha.getFullYear();
             var mm = String(fecha.getMonth() + 1).padStart(2, '0');
@@ -449,15 +481,18 @@ $(document).ready(function() {
             $('#fechapago').attr('min', getTodayStr());
         }
     }
-    $('#fechadocumento, #diapago').on('change keyup', actualizarFechaPago);
+	$('#fechadocumento, #diapago').on('change keyup', actualizarFechaPago);
+	$('#fechadocumento').on('change input', recalcularDiasPagoNuevoPorFechas);
+	$('#subtipoSelect').on('change', recalcularDiasPagoNuevoPorFechas);
 
     function actualizarDiasPago() {
         var fechaDocumento = $('#fechadocumento').val();
         var fechaPago = $('#fechapago').val();
         if (fechaDocumento && fechaPago) {
-            var fecha1 = new Date(fechaDocumento);
-            var fecha2 = new Date(fechaPago);
-            var today = new Date(getTodayStr());
+			var fecha1 = parseLocalDate(fechaDocumento);
+			var fecha2 = parseLocalDate(fechaPago);
+			var today = getTodayDateLocal();
+			if (!fecha1 || !fecha2 || !today) return;
             fecha1.setHours(0,0,0,0);
             fecha2.setHours(0,0,0,0);
             if (fecha2 < today) {
@@ -472,7 +507,7 @@ $(document).ready(function() {
             $('#diapago').val(diffDays);
         }
     }
-    $('#fechapago').on('change', actualizarDiasPago);
+	$('#fechapago').on('change input', actualizarDiasPago);
 
     $('#diapago').prop('readonly', true);
 });
@@ -481,11 +516,26 @@ $(document).ready(function() {
 $(document).ready(function() {
     $('#fechapagoU').attr('min', getTodayStr());
 
+	function esComprasEditar() {
+		return $('#subtipoSelectU option:selected').text().trim().toUpperCase() === 'COMPRAS';
+	}
+
+	function recalcularDiasPagoEditarPorFechas() {
+		if (!esComprasEditar()) return;
+		var fechaDocumento = $('#fechadocumentoU').val();
+		var fechaPago = $('#fechapagoU').val();
+		if (fechaDocumento && fechaPago) {
+			var diffDays = daysBetween(fechaDocumento, fechaPago);
+			$('#diapagoU').val(diffDays);
+		}
+	}
+
     function actualizarFechaPagoU() {
         var fechaDocumento = $('#fechadocumentoU').val();
         var diasPago = parseInt($('#diapagoU').val());
         if (fechaDocumento && !isNaN(diasPago)) {
-            var fecha = new Date(fechaDocumento);
+			var fecha = parseLocalDate(fechaDocumento);
+			if (!fecha) return;
             fecha.setDate(fecha.getDate() + diasPago);
             var yyyy = fecha.getFullYear();
             var mm = String(fecha.getMonth() + 1).padStart(2, '0');
@@ -495,15 +545,18 @@ $(document).ready(function() {
             $('#fechapagoU').attr('min', getTodayStr());
         }
     }
-    $('#fechadocumentoU, #diapagoU').on('change keyup', actualizarFechaPagoU);
+	$('#fechadocumentoU, #diapagoU').on('change keyup', actualizarFechaPagoU);
+	$('#fechadocumentoU').on('change input', recalcularDiasPagoEditarPorFechas);
+	$('#subtipoSelectU').on('change', recalcularDiasPagoEditarPorFechas);
 
     function actualizarDiasPagoU() {
         var fechaDocumento = $('#fechadocumentoU').val();
         var fechaPago = $('#fechapagoU').val();
         if (fechaDocumento && fechaPago) {
-            var fecha1 = new Date(fechaDocumento);
-            var fecha2 = new Date(fechaPago);
-            var today = new Date(getTodayStr());
+			var fecha1 = parseLocalDate(fechaDocumento);
+			var fecha2 = parseLocalDate(fechaPago);
+			var today = getTodayDateLocal();
+			if (!fecha1 || !fecha2 || !today) return;
             fecha1.setHours(0,0,0,0);
             fecha2.setHours(0,0,0,0); 
             if (fecha2 < today) {
@@ -518,7 +571,7 @@ $(document).ready(function() {
             $('#diapagoU').val(diffDays);
         }
     }
-    $('#fechapagoU').on('change', actualizarDiasPagoU);
+	$('#fechapagoU').on('change input', actualizarDiasPagoU);
 
     $('#diapagoU').prop('readonly', true);
 });
@@ -680,9 +733,19 @@ swal.fire({
 	<script type="text/javascript">
 		$(document).ready(function(){
 			$('#btnActualizarMovimiento').click(function(){  
+			   // Recalcular dias de pago antes de validar/guardar (modo editar)
+			   var fechaDocU = $("#fechadocumentoU").val();
+			   var fechaPagoU = $("#fechapagoU").val();
+			   if (fechaDocU && fechaPagoU) {
+				   var diasCalcU = daysBetween(fechaDocU, fechaPagoU);
+				   $("#diapagoU").val(diasCalcU);
+			   }
+
 			   var vidmovimiento= $("#idmovimiento").val(); 
 			   var vtipoSelect= $("#tipoSelectU").val();
                var vsubtipoSelect= $("#subtipoSelectU").val();
+			   var vsubtipoTexto = $("#subtipoSelectU option:selected").text().trim().toUpperCase();
+			   var esCompras = (vsubtipoTexto === 'COMPRAS');
 			   var vbodegaSelect=$("#bodegaSelectU").val();
                var vformapagoSelect=$("#formapagoSelectU").val();
                var vnodocumento=$("#nodocumentoU").val();
@@ -702,7 +765,7 @@ swal.fire({
                         }); 
 						return false;
 			    }  
-				if (vformapagoSelect == "0" && vsubtipoSelect =="1")
+				if (esCompras && vformapagoSelect == "0")
 				  {
                          Swal.fire({
                            title: "Seleccione la forma de pago",
@@ -712,7 +775,7 @@ swal.fire({
                         });  
 						return false;
 				  }
-				 if (vnodocumento == ""  && vsubtipoSelect =="1")
+				 if (esCompras && vnodocumento == "")
 				  {
                          Swal.fire({
                            title: "Ingresar el NO.DOCUMENTO/FACTURA",
@@ -742,7 +805,7 @@ swal.fire({
                         }); 
 						return false; 
 				  } 
-				  if ((vdiapago == "" || vdiapago == "0")  && vformapagoSelect == "1")
+				  if (esCompras && (vdiapago == "" || vdiapago == "0")  && vformapagoSelect == "1")
 				  {
                           Swal.fire({
                            title: "Ingresar los dias de pago.",
@@ -752,7 +815,7 @@ swal.fire({
                         });  
 						return false;
 				  }
-				  if ((vfechapago == "" || vfechapago == "0001-01-01") && vformapagoSelect == "1")
+				  if (esCompras && (vfechapago == "" || vfechapago == "0001-01-01") && vformapagoSelect == "1")
 				  {
                           Swal.fire({
                            title: "Seleccione la fecha de pago.",
@@ -800,9 +863,18 @@ swal.fire({
 		$(document).ready(function(){
 			$('#tablaMovimientosLoad').load("movimientos/tablaMovimientos.php"); 
 			$('#btnAgregaMovimiento').click(function(){ 
+			   // Recalcular dias de pago antes de validar/guardar (modo nuevo)
+			   var fechaDoc = $("#fechadocumento").val();
+			   var fechaPago = $("#fechapago").val();
+			   if (fechaDoc && fechaPago) {
+				   var diasCalc = daysBetween(fechaDoc, fechaPago);
+				   $("#diapago").val(diasCalc);
+			   }
 				 
 			   var vtipoSelect= $("#tipoSelect").val();
                var vsubtipoSelect= $("#subtipoSelect").val();
+			   var vsubtipoTexto = $("#subtipoSelect option:selected").text().trim().toUpperCase();
+			   var esCompras = (vsubtipoTexto === 'COMPRAS');
 			   var vbodegaSelect=bodegaActivaSesion || $("#bodegaSelect").val();
                var vformapagoSelect=$("#formapagoSelect").val();
                var vnodocumento=$("#nodocumento").val();
@@ -822,7 +894,7 @@ swal.fire({
                         }); 
 						return false;
 			    }  
-				if (vformapagoSelect == "0" && vsubtipoSelect =="1")
+				if (esCompras && vformapagoSelect == "0")
 				  {
                          Swal.fire({
                            title: "Seleccione la forma de pago",
@@ -832,7 +904,7 @@ swal.fire({
                         });  
 						return false;
 				  }
-				 if (vnodocumento == ""  && vsubtipoSelect =="1")
+				 if (esCompras && vnodocumento == "")
 				  {
                          Swal.fire({
                            title: "Ingresar el NO.DOCUMENTO/FACTURA",
@@ -862,7 +934,7 @@ swal.fire({
                         }); 
 						return false; 
 				  }
-				  if ((vdiapago == "" || vdiapago == "0")  && vformapagoSelect == "1")
+				  if (esCompras && (vdiapago == "" || vdiapago == "0")  && vformapagoSelect == "1")
 				  {
                           Swal.fire({
                            title: "Ingresar los dias de pago.",
@@ -872,7 +944,7 @@ swal.fire({
                         });  
 						return false;
 				  }
-				  if ((vfechapago == "" || vfechapago == "0001-01-01") && vformapagoSelect == "1")
+				  if (esCompras && (vfechapago == "" || vfechapago == "0001-01-01") && vformapagoSelect == "1")
 				  {
                           Swal.fire({
                            title: "Seleccione la fecha de pago.",
@@ -1026,12 +1098,14 @@ swal.fire({
 		$(document).ready(function(){ 
 
 	 function actualizarDiasPagoU() {
+		if (window.editandoMovimiento) return;
         var fechaDocumento = $('#fechadocumentoU').val();
         var fechaPago = $('#fechapagoU').val();
         if (fechaDocumento && fechaPago) {
-            var fecha1 = new Date(fechaDocumento);
-            var fecha2 = new Date(fechaPago);
-            var today = new Date(getTodayStr());
+			var fecha1 = parseLocalDate(fechaDocumento);
+			var fecha2 = parseLocalDate(fechaPago);
+			var today = getTodayDateLocal();
+			if (!fecha1 || !fecha2 || !today) return;
             fecha1.setHours(0,0,0,0);
             fecha2.setHours(0,0,0,0);
             if (fecha2 < today) {
@@ -1048,6 +1122,7 @@ swal.fire({
     }
 
 			$('#formapagoSelectU').on('change', function() {
+				if (window.editandoMovimiento) return;
 			    var idformaPago = $(this).find(":selected").val(); 
                 if ( idformaPago == "2" || idformaPago == "0" )
 				{ 
@@ -1062,6 +1137,7 @@ swal.fire({
 	<script type="text/javascript">
 		$(document).ready(function(){ 
 			$('#subtipoSelectU').on('change', function() {
+				if (window.editandoMovimiento) return;
 			    var idSubTipoMovimiento = $(this).find(":selected").val(); 
                 ////$("#formapagoSelectU").val('0'); 
                 $("#nodocumentoU").val('');
