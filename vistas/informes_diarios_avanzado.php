@@ -677,6 +677,20 @@ async function exportarTablaAPDF(resultados, filtrosAplicados) {
                     data.cell.colSpan = data.cell.raw.colSpan;
                     data.cell.styles = Object.assign(data.cell.styles, data.cell.raw.styles || {});
                 }
+                if (
+                    data.section === 'body' &&
+                    data.row.raw &&
+                    Array.isArray(data.row.raw.__imagenesMiniaturas) &&
+                    data.column.index === 3
+                ) {
+                    const imgs = data.row.raw.__imagenesMiniaturas;
+                    const porFila = 4;
+                    const filas = Math.max(1, Math.ceil(imgs.length / porFila));
+                    const altoImg = 38;
+                    const gapY = 6;
+                    const altoNecesario = (filas * altoImg) + ((filas - 1) * gapY) + 24;
+                    data.cell.styles.minCellHeight = Math.max(data.cell.styles.minCellHeight || 0, altoNecesario);
+                }
             },
             didDrawCell: function (data) {
                 // Dibuja miniaturas si hay imágenes (solo en columna de imágenes)
@@ -688,17 +702,22 @@ async function exportarTablaAPDF(resultados, filtrosAplicados) {
                 ) {
                     const imgs = data.row.raw.__imagenesMiniaturas;
                     if (imgs && imgs.length > 0) {
-                        let x = data.cell.x + 5;
-                        let y = data.cell.y + 20;
-                        let width = 50;
-                        let height = 40;
-                        let gap = 5;
+                        const width = 46;
+                        const height = 38;
+                        const gapX = 5;
+                        const gapY = 6;
+                        const porFila = 4;
+                        const baseX = data.cell.x + 5;
+                        const baseY = data.cell.y + 20;
                         for (let i = 0; i < imgs.length; i++) {
                             if (imgs[i]) {
+                                const col = i % porFila;
+                                const row = Math.floor(i / porFila);
+                                const x = baseX + (col * (width + gapX));
+                                const y = baseY + (row * (height + gapY));
                                 try {
                                     doc.addImage(imgs[i], 'PNG', x, y, width, height);
                                 } catch(e) {}
-                                x += width + gap;
                             }
                         }
                     }

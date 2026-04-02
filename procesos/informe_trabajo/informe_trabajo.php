@@ -25,6 +25,13 @@ switch($action) {
         break;
     case 'guardar':
         $id_usuario = $_SESSION['id_usuario'] ?? 1;
+        if (isset($_SESSION['bodega_seleccionada']) && $_SESSION['bodega_seleccionada'] !== '') {
+            $_POST['id_bodega_principal'] = $_SESSION['bodega_seleccionada'];
+            $_POST['id_bodega_secundaria'] = $_SESSION['bodega_seleccionada'];
+        } else {
+            $idPrincipal = $_POST['id_bodega_principal'] ?? '';
+            $_POST['id_bodega_secundaria'] = $idPrincipal;
+        }
         echo json_encode($informe->guardar($_POST, $id_usuario));
         break;
     case 'eliminar':

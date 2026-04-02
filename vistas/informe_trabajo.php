@@ -114,8 +114,7 @@ if (!$acceso) {
                             <input class="form-control input-sm" type="date" id="fecha" name="fecha" required>
                             <label class="label-custom">LUGAR:</label>
                             <select id="id_bodega_principal" name="id_bodega_principal"  style="width: 270px;" required></select>
-                            <label class="label-custom">UBICACIÒN:</label>
-                            <select id="id_bodega_secundaria" name="id_bodega_secundaria"  style="width: 270px;" required></select>
+                            <input type="hidden" id="id_bodega_secundaria" name="id_bodega_secundaria">
                         </div>
                         <div class="col-sm-6">  
                             <label class="label-custom">OBSERVACIÓN:</label>
@@ -146,6 +145,8 @@ if (!$acceso) {
 <script type="text/javascript">
 
 let bodegasCache = [];
+let informesTrabajoCache = [];
+const bodegaActivaSesion = <?php echo isset($_SESSION['bodega_seleccionada']) ? intval($_SESSION['bodega_seleccionada']) : 'null'; ?>;
 
 window.idEjecucionObraFiltro = <?php echo isset($_GET['id_ejecucion_obra']) && intval($_GET['id_ejecucion_obra']) > 0 ? intval($_GET['id_ejecucion_obra']) : 'null'; ?>;
 $(document).ready(function() {
@@ -167,81 +168,337 @@ $(document).ready(function() {
         guardarInforme();
     });
 
-    // --- Exportar a Excel ---
-    $('#btnExportExcel').on('click', function() {
-        var table = document.getElementById('gridInformes');
-        var rows = Array.from(table.querySelectorAll('tbody tr'));
-        var headerCells = Array.from(table.querySelectorAll('thead tr th'));
-        // Exportar solo las 6 primeras columnas (sin acciones)
-        var header = headerCells.slice(0,6).map(cell => cell.innerText);
+    // --- Exportar a Excel con detalle por informe ---
+    $('#btnExportExcel').on('click', async function() {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('InformesTrabajo');
+        const informes = Array.isArray(informesTrabajoCache) ? informesTrabajoCache : [];
+        const detallesInformes = [];
+        let maxImgs = 0;
 
-        var workbook = new ExcelJS.Workbook();
-        var worksheet = workbook.addWorksheet('InformesTrabajo');
+        for (const informe of informes) {
+            const idInforme = informe.id_informe;
+            const [empleadosInternos, empleadosExternos, articulos, imagenes] = await Promise.all([
+                postInformeTrabajo('listar_empleados_internos', { id_informe: idInforme }),
+                postInformeTrabajo('listar_empleados_externos', { id_informe: idInforme }),
+                postInformeTrabajo('listar_articulos', { id_informe: idInforme }),
+                postInformeTrabajo('listar_imagenes', { id_informe: idInforme })
+            ]);
+
+            const empleados = [];
+            (empleadosInternos || []).forEach(e => empleados.push(e.nombres_apellidos || ''));
+            (empleadosExternos || []).forEach(e => empleados.push(e.nombres_apellidos || ''));
+
+            const articulosStr = (articulos || []).length > 0
+                ? (articulos || []).map(a => `${a.nombre || ''} (${a.cantidad || 0}) [Lote: ${a.lote || '-'}]`).join('\n')
+                : '—';
+            const empleadosStr = empleados.length > 0 ? empleados.join('\n') : '—';
+            const descripcionStr = (informe.descripcion && String(informe.descripcion).trim() !== '') ? informe.descripcion : '—';
+
+            let imagenesBase64 = [];
+            for (const img of (imagenes || [])) {
+                if (!img.ruta) continue;
+                const b64 = await getBase64FromUrlInformeTrabajo('../' + String(img.ruta).replace(/^\.\.\//, ''));
+                if (b64) imagenesBase64.push(b64);
+            }
+            maxImgs = Math.max(maxImgs, imagenesBase64.length);
+
+            detallesInformes.push({
+                informe,
+                articulosStr,
+                empleadosStr,
+                descripcionStr,
+                imagenesBase64
+            });
+        }
+
+        if (maxImgs < 1) maxImgs = 1;
+
+        let header = ['ID', 'Ejecución de Obra', 'Fecha'];
+        for (let i = 1; i <= maxImgs; i++) {
+            header.push('Imagen ' + i);
+        }
+        header = header.concat(['Lugar', 'Ubicación', 'Observación']);
 
         let headerRow = worksheet.addRow(header);
         headerRow.eachCell(cell => {
-            cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
             cell.fill = {
                 type: 'pattern',
                 pattern: 'solid',
-                fgColor: { argb: "FF046b8b" }
+                fgColor: { argb: 'FF046b8b' }
             };
-            cell.alignment = { horizontal: "center", vertical: "middle" };
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
             cell.border = {
                 top: {style:'thin'}, left: {style:'thin'},
                 bottom: {style:'thin'}, right: {style:'thin'}
             };
         });
 
-        rows.forEach(row => {
-            let dataRow = Array.from(row.cells).slice(0,6).map(cell => cell.innerText);
-            worksheet.addRow(dataRow);
-        });
-
-        worksheet.columns.forEach(function(column, i) {
-            let maxLength = 10;
-            column.eachCell({ includeEmpty: true }, function(cell) {
-                let cellValue = cell.value ? cell.value.toString() : "";
-                maxLength = Math.max(maxLength, cellValue.length + 2);
+        for (const det of detallesInformes) {
+            const informe = det.informe;
+            const encabezado = worksheet.addRow([
+                informe.id_informe ?? '',
+                informe.identificador_ejecucion ?? (informe.id_ejecucion_obra ?? ''),
+                informe.fecha ?? '',
+                ...Array(maxImgs).fill(''),
+                informe.bodega_principal ?? '',
+                informe.bodega_secundaria ?? '',
+                informe.observacion ?? ''
+            ]);
+            encabezado.eachCell(cell => {
+                cell.font = { bold: true, color: { argb: 'FF000000' } };
+                cell.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FFDAECF7' }
+                };
+                cell.alignment = { horizontal: 'left', vertical: 'top', wrapText: true };
+                cell.border = {
+                    top: {style:'thin'}, left: {style:'thin'},
+                    bottom: {style:'thin'}, right: {style:'thin'}
+                };
             });
-            column.width = maxLength;
-        });
 
-        workbook.xlsx.writeBuffer().then(function(buffer) {
-            saveAs(new Blob([buffer], { type: "application/octet-stream" }), "InformesTrabajo.xlsx");
-        });
+            const detalle = worksheet.addRow([
+                'Artículos:\n' + det.articulosStr,
+                'Empleados:\n' + det.empleadosStr,
+                '',
+                ...Array(maxImgs).fill(''),
+                'Descripción:\n' + det.descripcionStr,
+                '',
+                ''
+            ]);
+            detalle.height = 62;
+            detalle.eachCell(cell => {
+                cell.font = { size: 10 };
+                cell.alignment = { horizontal: 'left', vertical: 'top', wrapText: true };
+                cell.border = {
+                    top: {style:'thin'}, left: {style:'thin'},
+                    bottom: {style:'thin'}, right: {style:'thin'}
+                };
+            });
+
+            // Insertar imágenes reales en columnas dinámicas
+            for (let i = 0; i < det.imagenesBase64.length; i++) {
+                const imageId = workbook.addImage({
+                    base64: det.imagenesBase64[i],
+                    extension: 'png'
+                });
+                const columnaImagen = 4 + i; // D en adelante
+                worksheet.addImage(imageId, {
+                    tl: { col: columnaImagen - 1 + 0.08, row: detalle.number - 1 + 0.1 },
+                    ext: { width: 58, height: 44 },
+                    editAs: 'absolute'
+                });
+            }
+
+            worksheet.addRow(Array(3 + maxImgs + 3).fill(''));
+        }
+
+        worksheet.getColumn(1).width = 12;
+        worksheet.getColumn(2).width = 26;
+        worksheet.getColumn(3).width = 16;
+        for (let i = 0; i < maxImgs; i++) {
+            worksheet.getColumn(4 + i).width = 12;
+        }
+        worksheet.getColumn(4 + maxImgs).width = 18;
+        worksheet.getColumn(5 + maxImgs).width = 18;
+        worksheet.getColumn(6 + maxImgs).width = 30;
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        saveAs(new Blob([buffer], { type: 'application/octet-stream' }), 'InformesTrabajo.xlsx');
     });
 
-    // --- Exportar a PDF ---
-    $('#btnExportPDF').on('click', function() {
-        var table = document.getElementById('gridInformes');
-        var headerCells = Array.from(table.querySelectorAll('thead tr th'));
-        var header = headerCells.slice(0,6).map(cell => cell.innerText);
-        var bodyRows = [];
-        $('#gridInformes tbody tr').each(function() {
-            var cols = [];
-            $(this).find('td').each(function(i) {
-                if (i < 6) cols.push($(this).text().trim());
-            });
-            if(cols.length) bodyRows.push(cols);
-        });
+    // --- Exportar a PDF (estructurado igual al reporte avanzado) ---
+    $('#btnExportPDF').on('click', async function() {
+        const doc = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'pt', format: 'A4' });
+        const pageWidth = doc.internal.pageSize.getWidth();
+        doc.setFontSize(20);
+        doc.setTextColor(40, 55, 71);
+        doc.text("Informes de Trabajo", pageWidth / 2, 32, { align: 'center' });
 
-        var doc = new window.jspdf.jsPDF();
-        doc.text("Informes de Trabajo", 14, 18);
+        const informes = Array.isArray(informesTrabajoCache) ? informesTrabajoCache : [];
+        let body = [];
+
+        for (const informe of informes) {
+            const idInforme = informe.id_informe;
+            const [empleadosInternos, empleadosExternos, articulos, imagenes] = await Promise.all([
+                postInformeTrabajo('listar_empleados_internos', { id_informe: idInforme }),
+                postInformeTrabajo('listar_empleados_externos', { id_informe: idInforme }),
+                postInformeTrabajo('listar_articulos', { id_informe: idInforme }),
+                postInformeTrabajo('listar_imagenes', { id_informe: idInforme })
+            ]);
+
+            const empleados = [];
+            (empleadosInternos || []).forEach(e => empleados.push(e.nombres_apellidos || ''));
+            (empleadosExternos || []).forEach(e => empleados.push(e.nombres_apellidos || ''));
+
+            const articulosStr = (articulos || []).length > 0
+                ? (articulos || []).map(a => `${a.nombre || ''} (${a.cantidad || 0}) [Lote: ${a.lote || '-'}]`).join('\n')
+                : '—';
+            const empleadosStr = empleados.length > 0 ? empleados.join('\n') : '—';
+            const descripcionStr = (informe.descripcion && String(informe.descripcion).trim() !== '') ? informe.descripcion : '—';
+
+            let imgsBase64 = [];
+            for (const img of (imagenes || [])) {
+                if (!img.ruta) continue;
+                const b64 = await getBase64FromUrlInformeTrabajo('../' + String(img.ruta).replace(/^\.\.\//, ''));
+                if (b64) imgsBase64.push(b64);
+                if (imgsBase64.length >= 6) break;
+            }
+
+            body.push({
+                id_informe: informe.id_informe ?? '',
+                ejecucion: informe.identificador_ejecucion ?? (informe.id_ejecucion_obra ?? ''),
+                fecha: informe.fecha ?? '',
+                lugar: informe.bodega_principal ?? '',
+                ubicacion: informe.bodega_secundaria ?? '',
+                observacion: informe.observacion ?? ''
+            });
+
+            body.push({
+                id_informe: {
+                    content: 'Artículos:\n' + articulosStr,
+                    colSpan: 2,
+                    styles: { halign: 'left', valign: 'top', cellWidth: 210 }
+                },
+                fecha: {
+                    content: 'Empleados:\n' + empleadosStr,
+                    colSpan: 1,
+                    styles: { halign: 'left', valign: 'top', cellWidth: 140 }
+                },
+                lugar: {
+                    content: 'Imágenes:',
+                    colSpan: 1,
+                    styles: { halign: 'left', valign: 'top', cellWidth: 180 }
+                },
+                ubicacion: {
+                    content: 'Descripción:\n' + descripcionStr,
+                    colSpan: 2,
+                    styles: { halign: 'left', valign: 'top', cellWidth: 220 }
+                },
+                __imagenesMiniaturas: imgsBase64
+            });
+        }
+
         doc.autoTable({
-            head: [header],
-            body: bodyRows,
-            startY: 22,
-            styles: { fontSize: 10 },
+            startY: 48,
+            columns: [
+                { header: 'ID', dataKey: 'id_informe' },
+                { header: 'Ejecución de Obra', dataKey: 'ejecucion' },
+                { header: 'Fecha', dataKey: 'fecha' },
+                { header: 'Lugar', dataKey: 'lugar' },
+                { header: 'Ubicación', dataKey: 'ubicacion' },
+                { header: 'Observación', dataKey: 'observacion' }
+            ],
+            body: body,
+            styles: {
+                fontSize: 9,
+                cellPadding: 4,
+                fillColor: [245, 245, 245],
+                overflow: 'linebreak',
+                valign: 'middle'
+            },
             headStyles: {
                 fillColor: [4, 107, 139],
                 textColor: [255, 255, 255],
-                fontStyle: 'bold'
+                fontStyle: 'bold',
+                halign: 'center',
+                valign: 'middle',
+                minCellHeight: 24
+            },
+            margin: { left: 32, right: 32 },
+            columnStyles: {
+                0: { cellWidth: 45, halign: 'center' },
+                1: { cellWidth: 120, halign: 'left' },
+                2: { cellWidth: 78, halign: 'center' },
+                3: { cellWidth: 90, halign: 'left' },
+                4: { cellWidth: 90, halign: 'left' },
+                5: { cellWidth: 325, halign: 'left' }
+            },
+            didParseCell: function (data) {
+                if (data.row.section === 'body' && data.cell.raw && data.cell.raw.colSpan) {
+                    data.cell.colSpan = data.cell.raw.colSpan;
+                    data.cell.styles = Object.assign(data.cell.styles, data.cell.raw.styles || {});
+                }
+                if (
+                    data.section === 'body' &&
+                    data.row.raw &&
+                    Array.isArray(data.row.raw.__imagenesMiniaturas) &&
+                    data.column.index === 3
+                ) {
+                    const imgs = data.row.raw.__imagenesMiniaturas;
+                    const porFila = 4;
+                    const filas = Math.max(1, Math.ceil(imgs.length / porFila));
+                    const altoImg = 34;
+                    const gapY = 6;
+                    const altoNecesario = (filas * altoImg) + ((filas - 1) * gapY) + 22;
+                    data.cell.styles.minCellHeight = Math.max(data.cell.styles.minCellHeight || 0, altoNecesario);
+                }
+            },
+            didDrawCell: function (data) {
+                if (
+                    data.section === 'body' &&
+                    data.row.raw &&
+                    Array.isArray(data.row.raw.__imagenesMiniaturas) &&
+                    data.column.index === 3
+                ) {
+                    const imgs = data.row.raw.__imagenesMiniaturas;
+                    if (imgs.length > 0) {
+                        const width = 44;
+                        const height = 34;
+                        const gapX = 4;
+                        const gapY = 6;
+                        const porFila = 4;
+                        const baseX = data.cell.x + 6;
+                        const baseY = data.cell.y + 18;
+                        imgs.forEach((img, i) => {
+                            const col = i % porFila;
+                            const row = Math.floor(i / porFila);
+                            const x = baseX + (col * (width + gapX));
+                            const y = baseY + (row * (height + gapY));
+                            try { doc.addImage(img, 'PNG', x, y, width, height); } catch(e) {}
+                        });
+                    }
+                }
             }
         });
+
         doc.save("InformesTrabajo.pdf");
     });
 });
+
+async function postInformeTrabajo(action, payload) {
+    const params = new URLSearchParams(Object.assign({ action: action }, payload || {}));
+    const resp = await fetch('../procesos/informe_trabajo/informe_trabajo.php', {
+        method: 'POST',
+        body: params
+    });
+    try {
+        return await resp.json();
+    } catch (e) {
+        return [];
+    }
+}
+
+async function getBase64FromUrlInformeTrabajo(url) {
+    if (!url) return '';
+    return await new Promise((resolve) => {
+        const img = new Image();
+        img.setAttribute('crossOrigin', 'anonymous');
+        img.onload = function() {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
+        };
+        img.onerror = function() { resolve(''); };
+        img.src = url;
+    });
+}
 
 
 function cargarInformes() {
@@ -254,7 +511,10 @@ function cargarInformes() {
         body: new URLSearchParams(params)
     })
     .then(resp => resp.json())
-    .then(data => pintarGridInformes(data));
+    .then(data => {
+        informesTrabajoCache = Array.isArray(data) ? data : [];
+        pintarGridInformes(informesTrabajoCache);
+    });
 }
 
 function cargarEjecucionesObra() {
@@ -291,15 +551,11 @@ function cargarBodegas() {
         if ($('#id_bodega_principal').hasClass("select2-hidden-accessible")) {
             $('#id_bodega_principal').select2('destroy');
         }
-        if ($('#id_bodega_secundaria').hasClass("select2-hidden-accessible")) {
-            $('#id_bodega_secundaria').select2('destroy');
-        }
         const principal = document.getElementById('id_bodega_principal');
-        const secundaria = document.getElementById('id_bodega_secundaria');
         principal.innerHTML = '';
 
-        // Solo principales
-        bodegas.filter(b => !b.es_bodega_secundaria).forEach(b => {
+        // Mostrar bodegas activas para seleccionar la bodega activa de sesión.
+        bodegas.forEach(b => {
             principal.innerHTML += `<option value="${b.id_bodega}">${b.nombreBodega}</option>`;
         });
 
@@ -308,42 +564,26 @@ function cargarBodegas() {
             dropdownParent: $('#formModalInforme')
         });
 
-        // Limpiar secundaria inicialmente
-        secundaria.innerHTML = '';
-        $('#id_bodega_secundaria').select2({
-            width: 'resolve',
-            dropdownParent: $('#formModalInforme')
-        });
-
-        // Cuando cambie principal, cargar la principal + secundarias hijas
+        // Secundaria siempre debe igualar principal para no afectar backend.
         principal.onchange = function() {
             let idPrincipal = principal.value;
-            secundaria.innerHTML = '';
-
-            // 1. Agrega la bodega principal seleccionada como opción
-            const bodegaPrincipalObj = bodegas.find(b => b.id_bodega == idPrincipal);
-            if (bodegaPrincipalObj) {
-                secundaria.innerHTML += `<option value="${bodegaPrincipalObj.id_bodega}">${bodegaPrincipalObj.nombreBodega} (Principal)</option>`;
-            }
-
-            // 2. Agrega las bodegas secundarias hijas
-            bodegas.filter(b =>
-                b.es_bodega_secundaria === 1 &&
-                b.id_bodega_principal == idPrincipal
-            ).forEach(b => {
-                secundaria.innerHTML += `<option value="${b.id_bodega}">${b.nombreBodega}</option>`;
-            });
-
-            // Selecciona la principal como default
-            secundaria.value = idPrincipal;
-            $('#id_bodega_secundaria').val(idPrincipal).trigger('change');
+            $('#id_bodega_secundaria').val(idPrincipal);
         };
 
-        // Disparar el evento al cargar para sincronizar
         if (principal.options.length > 0) {
-            principal.value = principal.options[0].value;
-            principal.onchange();
+            let valorBodega = null;
+            if (bodegaActivaSesion !== null && principal.querySelector('option[value="' + bodegaActivaSesion + '"]')) {
+                valorBodega = String(bodegaActivaSesion);
+            } else {
+                valorBodega = principal.options[0].value;
+            }
+            principal.value = valorBodega;
+            $('#id_bodega_principal').val(valorBodega).trigger('change');
+            $('#id_bodega_secundaria').val(valorBodega);
         }
+
+        // Bloquear para que siempre use la bodega activa.
+        $('#id_bodega_principal').prop('disabled', true).trigger('change.select2');
     });
 }
 
@@ -351,7 +591,6 @@ function mostrarFormularioInforme(informe = null) {
     $('#formModalInforme').modal('show');
     let id_informe = "";
     let selectBodega = document.getElementById('id_bodega_principal');
-    let selectSecundaria = document.getElementById('id_bodega_secundaria');
 
     if (informe && informe.id_informe) {
         $('#formModalLabel').text('Editar Informe Diario');
@@ -383,16 +622,14 @@ function mostrarFormularioInforme(informe = null) {
                 let hiddenEjecucion = document.getElementById('hidden_id_ejecucion_obra');
                 if (hiddenEjecucion) hiddenEjecucion.remove();
             }
-            if (selectBodega && informe.id_bodega_principal) {
-                selectBodega.value = informe.id_bodega_principal;
-                $('#id_bodega_principal').trigger('change');
-            }
-            setTimeout(function() {
-                if (selectSecundaria && informe.id_bodega_secundaria) {
-                    selectSecundaria.value = informe.id_bodega_secundaria;
-                    $('#id_bodega_secundaria').val(informe.id_bodega_secundaria).trigger('change');
+            if (selectBodega && selectBodega.options.length > 0) {
+                if (bodegaActivaSesion !== null && selectBodega.querySelector('option[value="' + bodegaActivaSesion + '"]')) {
+                    selectBodega.value = String(bodegaActivaSesion);
                 }
-            }, 200);
+                $('#id_bodega_principal').val(selectBodega.value).trigger('change');
+                $('#id_bodega_secundaria').val(selectBodega.value);
+                $('#id_bodega_principal').prop('disabled', true).trigger('change.select2');
+            }
         }, 200);
     } else {
         $('#formModalLabel').text('Nuevo Informe Diario');
@@ -424,13 +661,14 @@ function mostrarFormularioInforme(informe = null) {
                 if (hiddenEjecucion) hiddenEjecucion.remove();
             }
             if (selectBodega && selectBodega.options.length > 0) {
-                selectBodega.selectedIndex = 0;
-                $('#id_bodega_principal').trigger('change');
-                let principalValue = selectBodega.value;
-                if (selectSecundaria) {
-                    selectSecundaria.value = principalValue;
-                    $('#id_bodega_secundaria').val(principalValue).trigger('change');
+                if (bodegaActivaSesion !== null && selectBodega.querySelector('option[value="' + bodegaActivaSesion + '"]')) {
+                    selectBodega.value = String(bodegaActivaSesion);
+                } else {
+                    selectBodega.selectedIndex = 0;
                 }
+                $('#id_bodega_principal').trigger('change');
+                $('#id_bodega_secundaria').val(selectBodega.value);
+                $('#id_bodega_principal').prop('disabled', true).trigger('change.select2');
             }
         }, 200);
     }
@@ -438,7 +676,10 @@ function mostrarFormularioInforme(informe = null) {
 
 function guardarInforme() {
     const formInforme = document.getElementById('formInforme');
+    const idPrincipal = $('#id_bodega_principal').val() || '';
+    $('#id_bodega_secundaria').val(idPrincipal);
     const datos = new FormData(formInforme);
+    datos.set('id_bodega_secundaria', idPrincipal);
     datos.append('action', 'guardar');
     fetch('../procesos/informe_trabajo/informe_trabajo.php', {
         method: 'POST',
