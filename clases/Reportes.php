@@ -449,24 +449,35 @@ class Reporte {
     }
 
     // Reporte principal de pedido de materiales
-    public function reportePedidoMateriales($desde, $hasta, $proyecto, $obra, $articulo, $lugar) {
+    public function reportePedidoMateriales($desde, $hasta, $proyecto, $obra, $articulo, $lugar, $idOrden = '') {
         $c = new conectar();
         $conexion = $c->conexion();
         $where = ["pm.id_estado_pedido_material = 1"];
-        if ($desde != '' && $hasta != '') {
-            $where[] = "pm.fecha_solicitud BETWEEN '".mysqli_real_escape_string($conexion, $desde)."' AND '".mysqli_real_escape_string($conexion, $hasta)."'";
-        }
-        if ($proyecto != '') {
-            $where[] = "ot.id_proyecto = '".intval($proyecto)."'";
-        }
-        if ($obra != '') {
-            $where[] = "ot.id_obra = '".intval($obra)."'";
-        }
-        if ($articulo != '') {
-            $where[] = "pmd.id_producto = '".intval($articulo)."'";
-        }
-        if ($lugar != '') {
-            $where[] = "ot.id_bodega_principal = '".intval($lugar)."'";
+        $idOrden = trim($idOrden);
+
+        if ($idOrden !== '') {
+            $idOrdenEscapado = mysqli_real_escape_string($conexion, $idOrden);
+            $condicionOrden = "ot.identificador = '$idOrdenEscapado'";
+            if (ctype_digit($idOrden)) {
+                $condicionOrden = "($condicionOrden OR ot.id_orden = " . intval($idOrden) . ")";
+            }
+            $where[] = $condicionOrden;
+        } else {
+            if ($desde != '' && $hasta != '') {
+                $where[] = "pm.fecha_solicitud BETWEEN '".mysqli_real_escape_string($conexion, $desde)."' AND '".mysqli_real_escape_string($conexion, $hasta)."'";
+            }
+            if ($proyecto != '') {
+                $where[] = "ot.id_proyecto = '".intval($proyecto)."'";
+            }
+            if ($obra != '') {
+                $where[] = "ot.id_obra = '".intval($obra)."'";
+            }
+            if ($articulo != '') {
+                $where[] = "pmd.id_producto = '".intval($articulo)."'";
+            }
+            if ($lugar != '') {
+                $where[] = "ot.id_bodega_principal = '".intval($lugar)."'";
+            }
         }
         $whereSql = count($where) > 0 ? ('WHERE '.implode(' AND ', $where)) : '';
         $sql = "
@@ -535,20 +546,30 @@ class Reporte {
         $c = new conectar();
         $conexion = $c->conexion();
         $w = [];
-        if (!empty($filtros['proyecto'])) {
-            $w[] = "p.id = '".intval($filtros['proyecto'])."'";
-        }
-        if (!empty($filtros['obra'])) {
-            $w[] = "ob.id = '".intval($filtros['obra'])."'";
-        }
-        if (!empty($filtros['fecha_inicial'])) {
-            $w[] = "eo.fecha_solicitud >= '".mysqli_real_escape_string($conexion, $filtros['fecha_inicial'])."'";
-        }
-        if (!empty($filtros['fecha_final'])) {
-            $w[] = "eo.fecha_solicitud <= '".mysqli_real_escape_string($conexion, $filtros['fecha_final'])."'";
-        }
-        if (!empty($filtros['bodega'])) {
-            $w[] = "b.id_bodega = '".intval($filtros['bodega'])."'";
+        $idOrden = isset($filtros['id_orden']) ? trim($filtros['id_orden']) : '';
+        if ($idOrden !== '') {
+            $idOrdenEscapado = mysqli_real_escape_string($conexion, $idOrden);
+            $condicionOrden = "o.identificador = '$idOrdenEscapado'";
+            if (ctype_digit($idOrden)) {
+                $condicionOrden = "($condicionOrden OR o.id_orden = " . intval($idOrden) . ")";
+            }
+            $w[] = $condicionOrden;
+        } else {
+            if (!empty($filtros['proyecto'])) {
+                $w[] = "p.id = '".intval($filtros['proyecto'])."'";
+            }
+            if (!empty($filtros['obra'])) {
+                $w[] = "ob.id = '".intval($filtros['obra'])."'";
+            }
+            if (!empty($filtros['fecha_inicial'])) {
+                $w[] = "eo.fecha_solicitud >= '".mysqli_real_escape_string($conexion, $filtros['fecha_inicial'])."'";
+            }
+            if (!empty($filtros['fecha_final'])) {
+                $w[] = "eo.fecha_solicitud <= '".mysqli_real_escape_string($conexion, $filtros['fecha_final'])."'";
+            }
+            if (!empty($filtros['bodega'])) {
+                $w[] = "b.id_bodega = '".intval($filtros['bodega'])."'";
+            }
         }
         $where = count($w) ? "WHERE ".implode(" AND ", $w) : "";
 
@@ -603,21 +624,31 @@ class Reporte {
         $c = new conectar();
         $conexion = $c->conexion();
         $w = [];
-        if (!empty($filtros['proyecto'])) {
-            $w[] = "p.id = '".intval($filtros['proyecto'])."'";
-        }
-        if (!empty($filtros['obra'])) {
-            $w[] = "ob.id = '".intval($filtros['obra'])."'";
-        }
-        if (!empty($filtros['fecha_inicial'])) {
-            $w[] = "eo.fecha_solicitud >= '".mysqli_real_escape_string($conexion, $filtros['fecha_inicial'])."'";
-        }
-        if (!empty($filtros['fecha_final'])) {
-            $w[] = "eo.fecha_solicitud <= '".mysqli_real_escape_string($conexion, $filtros['fecha_final'])."'";
+        $idOrden = isset($filtros['id_orden']) ? trim($filtros['id_orden']) : '';
+        if ($idOrden !== '') {
+            $idOrdenEscapado = mysqli_real_escape_string($conexion, $idOrden);
+            $condicionOrden = "ot.identificador = '$idOrdenEscapado'";
+            if (ctype_digit($idOrden)) {
+                $condicionOrden = "($condicionOrden OR ot.id_orden = " . intval($idOrden) . ")";
+            }
+            $w[] = $condicionOrden;
+        } else {
+            if (!empty($filtros['proyecto'])) {
+                $w[] = "p.id = '".intval($filtros['proyecto'])."'";
+            }
+            if (!empty($filtros['obra'])) {
+                $w[] = "ob.id = '".intval($filtros['obra'])."'";
+            }
+            if (!empty($filtros['fecha_inicial'])) {
+                $w[] = "eo.fecha_solicitud >= '".mysqli_real_escape_string($conexion, $filtros['fecha_inicial'])."'";
+            }
+            if (!empty($filtros['fecha_final'])) {
+                $w[] = "eo.fecha_solicitud <= '".mysqli_real_escape_string($conexion, $filtros['fecha_final'])."'";
+            }
         }
         $where = count($w) ? "WHERE ".implode(" AND ", $w) : "";
 
-        $sql = "SELECT ot.id_orden, p.nombre AS proyecto, ob.nombre AS obra, eo.fecha_solicitud AS fecha, b.nombreBodega AS lugar, e.nombres_apellidos AS responsable, htd.hora_entrada, htd.hora_salida, htd.cantidad_horas_normal AS h_normales, htd.cantidad_horas_extra AS h_extras, htd.cantidad_horas_extraordinaria AS h_extraordinarias
+        $sql = "SELECT ot.identificador AS id_orden, p.nombre AS proyecto, ob.nombre AS obra, eo.fecha_solicitud AS fecha, b.nombreBodega AS lugar, e.nombres_apellidos AS responsable, htd.hora_entrada, htd.hora_salida, htd.cantidad_horas_normal AS h_normales, htd.cantidad_horas_extra AS h_extras, htd.cantidad_horas_extraordinaria AS h_extraordinarias
                 FROM ejecucion_obra eo
                 INNER JOIN ordenes_trabajo ot ON eo.id_orden = ot.id_orden
                 INNER JOIN proyecto p ON ot.id_proyecto = p.id
@@ -640,17 +671,27 @@ class Reporte {
         $c = new conectar();
         $conexion = $c->conexion();
         $w = [];
-        if (!empty($filtros['proyecto'])) {
-            $w[] = "p.id = '".intval($filtros['proyecto'])."'";
-        }
-        if (!empty($filtros['obra'])) {
-            $w[] = "ob.id = '".intval($filtros['obra'])."'";
-        }
-        if (!empty($filtros['fecha_inicial'])) {
-            $w[] = "eo.fecha_solicitud >= '".mysqli_real_escape_string($conexion, $filtros['fecha_inicial'])."'";
-        }
-        if (!empty($filtros['fecha_final'])) {
-            $w[] = "eo.fecha_solicitud <= '".mysqli_real_escape_string($conexion, $filtros['fecha_final'])."'";
+        $idOrden = isset($filtros['id_orden']) ? trim($filtros['id_orden']) : '';
+        if ($idOrden !== '') {
+            $idOrdenEscapado = mysqli_real_escape_string($conexion, $idOrden);
+            $condicionOrden = "ot.identificador = '$idOrdenEscapado'";
+            if (ctype_digit($idOrden)) {
+                $condicionOrden = "($condicionOrden OR ot.id_orden = " . intval($idOrden) . ")";
+            }
+            $w[] = $condicionOrden;
+        } else {
+            if (!empty($filtros['proyecto'])) {
+                $w[] = "p.id = '".intval($filtros['proyecto'])."'";
+            }
+            if (!empty($filtros['obra'])) {
+                $w[] = "ob.id = '".intval($filtros['obra'])."'";
+            }
+            if (!empty($filtros['fecha_inicial'])) {
+                $w[] = "eo.fecha_solicitud >= '".mysqli_real_escape_string($conexion, $filtros['fecha_inicial'])."'";
+            }
+            if (!empty($filtros['fecha_final'])) {
+                $w[] = "eo.fecha_solicitud <= '".mysqli_real_escape_string($conexion, $filtros['fecha_final'])."'";
+            }
         }
         $where = count($w) ? "WHERE ".implode(" AND ", $w) : "";
 

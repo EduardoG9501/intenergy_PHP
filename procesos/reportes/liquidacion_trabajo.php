@@ -8,6 +8,12 @@ $conexionObj = new conectar();
 $conexion = $conexionObj->conexion();
 $accion = isset($_POST['accion']) ? $_POST['accion'] : '';
 $filtros = isset($_POST['filtros']) ? $_POST['filtros'] : [];
+if (!is_array($filtros)) {
+    $filtros = [];
+}
+if (empty($filtros['id_orden']) && isset($_POST['id_orden'])) {
+    $filtros['id_orden'] = $_POST['id_orden'];
+}
 
 switch ($accion) {
     case 'materiales':

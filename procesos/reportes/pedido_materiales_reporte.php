@@ -27,7 +27,8 @@ switch($action) {
         $obra = $_POST['obra'] ?? '';
         $articulo = $_POST['articulo'] ?? '';
         $lugar = $_POST['lugar'] ?? '';
-        echo json_encode($reportes->reportePedidoMateriales($desde, $hasta, $proyecto, $obra, $articulo, $lugar));
+        $idOrden = $_POST['id_orden'] ?? '';
+        echo json_encode($reportes->reportePedidoMateriales($desde, $hasta, $proyecto, $obra, $articulo, $lugar, $idOrden));
         break;
     default:
         echo json_encode(['error' => 'Acción no válida']);

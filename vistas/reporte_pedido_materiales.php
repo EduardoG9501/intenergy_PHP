@@ -61,7 +61,9 @@ if (!$acceso) {
                     <select id="lugar" name="lugar" class="form-control" style="width: 200px;"><option value="">Todos</option></select>
                 </div>
                 <div class="col-sm-2">
-                    <button type="submit" style="width: 150px; margin-top: 15px;" class="btn btn-primary">Buscar</button>
+                    <label for="id_orden">ID Orden:</label>
+                    <input type="text" id="id_orden" name="id_orden" class="form-control" style="width:200px" placeholder="ID ORDEN">
+                    <button type="submit" style="width: 150px; margin-top: 10px;" class="btn btn-primary">Buscar</button>
                 </div>
                 <div class="col-sm-2">
                     <button type="button" style="width: 150px; margin-top: 15px;" id="btnExportarExcel" class="btn btn-success">
@@ -234,7 +236,8 @@ function buscarPedidoMateriales() {
         proyecto: $('#proyecto').val(),
         obra: $('#obra').val(),
         articulo: $('#articulo').val(),
-        lugar: $('#lugar').val()
+        lugar: $('#lugar').val(),
+        id_orden: $('#id_orden').val()
     };
     $.post('../procesos/reportes/pedido_materiales_reporte.php', datos, function(data){
         let pedidos = JSON.parse(data);
@@ -393,9 +396,11 @@ function exportarTablaAPDF() {
     const obra = $('#obra option:selected').text() || 'Todos';
     const lugar = $('#lugar option:selected').text() || 'Todos';
     const articulo = $('#articulo option:selected').text() || 'Todos';
+    const idOrdenFiltro = ($('#id_orden').val() || '').trim();
     doc.text(`Proyecto: ${proyecto}`, 50, filtroY); filtroY += 16;
     doc.text(`Nombre de la Obra: ${obra}`, 50, filtroY); filtroY += 16;
     doc.text(`Lugar: ${lugar}`, 50, filtroY); filtroY += 16;
+    doc.text(`ID Orden: ${idOrdenFiltro}`, 50, filtroY); filtroY += 16;
     doc.text(`Artículos: ${articulo}`, 50, filtroY); filtroY += 10;
 
     // Obtener datos de la tabla (solo los visibles/filtrados)
@@ -492,9 +497,12 @@ function exportarExcelPedidoMateriales() {
     var headers = [
         'ID ORDEN', 'PROYECTO', 'NOMBRE DE LA OBRA', 'FECHA', 'LUGAR', 'ARTICULO', 'CANTIDAD'
     ];
+    var idOrdenFiltro = ($('#id_orden').val() || '').trim();
     var pedidos = (pedidosFiltrados && pedidosFiltrados.length > 0) ? pedidosFiltrados : pedidosOriginal;
     var workbook = new ExcelJS.Workbook();
     var worksheet = workbook.addWorksheet('PedidoMateriales');
+    worksheet.addRow([`ID Orden: ${idOrdenFiltro}`]);
+    worksheet.addRow([]);
     let headerRow = worksheet.addRow(headers);
     headerRow.eachCell(cell => {
         cell.font = { bold: true, color: { argb: "FFFFFFFF" } };

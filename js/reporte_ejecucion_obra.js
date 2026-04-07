@@ -95,12 +95,14 @@ $(document).ready(function(){
         const proyecto = $('#proyecto option:selected').text() || 'Todos';
         const obra = $('#obra option:selected').text() || 'Todos';
         const lugar = $('#bodega option:selected').text() || 'Todos';
+        const idOrdenFiltro = ($('#id_orden').val() || '').trim();
         const manoObra = esLiquidacionTrabajo ? ($('#txtManoObra').val() || '').trim() : '';
         const importante = esLiquidacionTrabajo ? ($('#txtImportante').val() || '').trim() : '';
         const imagenesLiquidacion = esLiquidacionTrabajo ? await obtenerImagenesLiquidacionBase64() : [];
         doc.text(`Proyecto: ${proyecto}`, 50, filtroY); filtroY += 16;
         doc.text(`Nombre de la Obra: ${obra}`, 50, filtroY); filtroY += 16;
         doc.text(`Lugar: ${lugar}`, 50, filtroY); filtroY += 16;
+        doc.text(`ID Orden: ${idOrdenFiltro}`, 50, filtroY); filtroY += 16;
         doc.text('Artículos: Todos', 50, filtroY); filtroY += 10;
 
         // Materiales
@@ -531,6 +533,7 @@ $(document).ready(function(){
         sheet.addRow([`Proyecto: ${$('#proyecto option:selected').text()}`]);
         sheet.addRow([`Nombre de la Obra: ${$('#obra option:selected').text()}`]);
         sheet.addRow([`Lugar: ${$('#bodega option:selected').text()}`]);
+        sheet.addRow([`ID Orden: ${($('#id_orden').val() || '').trim()}`]);
         sheet.addRow([]);
         // Título y línea solo una vez
         let matTitle = sheet.addRow(['MATERIALES A UTILIZAR']);
@@ -845,7 +848,8 @@ function obtenerFiltros() {
         obra: $('#obra').val(),
         bodega: $('#bodega').val(),
         fecha_inicial: $('#fecha_inicial').val(),
-        fecha_final: $('#fecha_final').val()
+        fecha_final: $('#fecha_final').val(),
+        id_orden: $('#id_orden').val()
     };
 }
 

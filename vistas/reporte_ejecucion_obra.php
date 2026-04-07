@@ -90,6 +90,8 @@ if (!$acceso) {
                 <div class="col-sm-3">
                     <label for="bodega">B. Lugar:</label>
                     <select id="bodega" name="bodega" class="form-control" style="width:200px"><option value="">Todos</option></select>
+                    <label for="id_orden">ID Orden:</label>
+                    <input type="text" id="id_orden" name="id_orden" class="form-control" style="width:200px" placeholder="ID ORDEN">
                 </div>
                 <div class="col-sm-2">
                     <button type="submit" style="width: 150px; margin-top: 15px;" class="btn btn-primary">Buscar</button>
@@ -204,7 +206,7 @@ function getBase64Image(img) {
 }
 </script>
     <script src="../librerias/alertifyjs/alertify.min.js"></script>
-    <script src="../js/reporte_ejecucion_obra.js"></script>
+    <script src="../js/reporte_ejecucion_obra.js?v=<?php echo filemtime('../js/reporte_ejecucion_obra.js'); ?>"></script>
     <div id="imgZoomModalReporte">
         <img src="" id="imgZoomModalReporteImg" alt="Zoom Imagen" />
     </div>
