@@ -762,23 +762,19 @@ class Reporte {
         $c = new conectar();
         $conexion = $c->conexion();
 
-        $proyecto = !empty($filtros['proyecto']) ? intval($filtros['proyecto']) : 0;
-        $obra = !empty($filtros['obra']) ? intval($filtros['obra']) : 0;
-        $bodega = !empty($filtros['bodega']) ? intval($filtros['bodega']) : 0;
-        $fechaInicial = !empty($filtros['fecha_inicial']) ? mysqli_real_escape_string($conexion, $filtros['fecha_inicial']) : '';
-        $fechaFinal = !empty($filtros['fecha_final']) ? mysqli_real_escape_string($conexion, $filtros['fecha_final']) : '';
+        $idOrdenFiltro = isset($filtros['id_orden']) ? trim($filtros['id_orden']) : '';
+        if ($idOrdenFiltro === '') {
+            return ['success' => true, 'data' => null];
+        }
 
-        if ($fechaInicial === '' || $fechaFinal === '') {
+        $idOrdenReal = $this->obtenerIdOrdenDesdeFiltro($conexion, $idOrdenFiltro);
+        if ($idOrdenReal <= 0) {
             return ['success' => true, 'data' => null];
         }
 
         $sql = "SELECT id_liquidacion_trabajo, mano_obra, importante
                 FROM liquidacion_trabajo
-                WHERE fecha_inicial = '$fechaInicial'
-                  AND fecha_final = '$fechaFinal'
-                  AND COALESCE(id_proyecto, 0) = $proyecto
-                  AND COALESCE(id_obra, 0) = $obra
-                  AND COALESCE(id_bodega, 0) = $bodega
+                WHERE id_orden = $idOrdenReal
                   AND estado = 1
                 ORDER BY id_liquidacion_trabajo DESC
                 LIMIT 1";
@@ -812,25 +808,32 @@ class Reporte {
             return ['success' => false, 'msg' => 'Usuario inválido para guardar liquidación'];
         }
 
-        $proyecto = !empty($filtros['proyecto']) ? intval($filtros['proyecto']) : 0;
-        $obra = !empty($filtros['obra']) ? intval($filtros['obra']) : 0;
-        $bodega = !empty($filtros['bodega']) ? intval($filtros['bodega']) : 0;
-        $fechaInicial = !empty($filtros['fecha_inicial']) ? mysqli_real_escape_string($conexion, $filtros['fecha_inicial']) : '';
-        $fechaFinal = !empty($filtros['fecha_final']) ? mysqli_real_escape_string($conexion, $filtros['fecha_final']) : '';
-        $manoObra = mysqli_real_escape_string($conexion, $manoObra);
-        $importante = mysqli_real_escape_string($conexion, $importante);
+        $idOrdenFiltro = isset($filtros['id_orden']) ? trim($filtros['id_orden']) : '';
+        $manoObraOriginal = trim((string)$manoObra);
+        $importanteOriginal = trim((string)$importante);
+        $manoObra = mysqli_real_escape_string($conexion, $manoObraOriginal);
+        $importante = mysqli_real_escape_string($conexion, $importanteOriginal);
 
-        if ($fechaInicial === '' || $fechaFinal === '') {
-            return ['success' => false, 'msg' => 'Debe especificar rango de fechas'];
+        if ($idOrdenFiltro === '') {
+            return ['success' => false, 'msg' => 'Debe especificar el ID Orden'];
+        }
+
+        if ($manoObraOriginal === '') {
+            return ['success' => false, 'msg' => 'Debe ingresar una descripción en MANO DE OBRA'];
+        }
+
+        if ($importanteOriginal === '') {
+            return ['success' => false, 'msg' => 'Debe ingresar una descripción en IMPORTANTE'];
+        }
+
+        $idOrdenReal = $this->obtenerIdOrdenDesdeFiltro($conexion, $idOrdenFiltro);
+        if ($idOrdenReal <= 0) {
+            return ['success' => false, 'msg' => 'No existe una orden de trabajo con el ID Orden ingresado'];
         }
 
         $sqlExiste = "SELECT id_liquidacion_trabajo
                       FROM liquidacion_trabajo
-                      WHERE fecha_inicial = '$fechaInicial'
-                        AND fecha_final = '$fechaFinal'
-                        AND COALESCE(id_proyecto, 0) = $proyecto
-                        AND COALESCE(id_obra, 0) = $obra
-                        AND COALESCE(id_bodega, 0) = $bodega
+                      WHERE id_orden = $idOrdenReal
                         AND estado = 1
                       ORDER BY id_liquidacion_trabajo DESC
                       LIMIT 1";
@@ -855,14 +858,10 @@ class Reporte {
             ];
         }
 
-        $idProyectoSql = $proyecto > 0 ? $proyecto : 'NULL';
-        $idObraSql = $obra > 0 ? $obra : 'NULL';
-        $idBodegaSql = $bodega > 0 ? $bodega : 'NULL';
-
         $sqlInsert = "INSERT INTO liquidacion_trabajo
-                        (id_usuario, id_proyecto, id_obra, id_bodega, fecha_inicial, fecha_final, mano_obra, importante, estado)
+                                                (id_usuario, id_orden, mano_obra, importante, estado)
                       VALUES
-                                                                                                ($idUsuario, $idProyectoSql, $idObraSql, $idBodegaSql, '$fechaInicial', '$fechaFinal', '$manoObra', '$importante', 1)";
+                                                                                                                                                                                                ($idUsuario, $idOrdenReal, '$manoObra', '$importante', 1)";
         $okInsert = mysqli_query($conexion, $sqlInsert);
         $idLiquidacion = mysqli_insert_id($conexion); 
         return [
@@ -871,6 +870,28 @@ class Reporte {
                         'msg' => $okInsert ? 'Liquidación guardada' : 'No se pudo guardar',
                         'error' => $okInsert ? '' : mysqli_error($conexion)
         ];
+    }
+
+    private function obtenerIdOrdenDesdeFiltro($conexion, $idOrdenFiltro) {
+        $idOrdenFiltro = trim((string)$idOrdenFiltro);
+        if ($idOrdenFiltro === '') {
+            return 0;
+        }
+
+        $idOrdenEscapado = mysqli_real_escape_string($conexion, $idOrdenFiltro);
+        $condicion = "identificador = '$idOrdenEscapado'";
+        if (ctype_digit($idOrdenFiltro)) {
+            $condicion .= " OR id_orden = " . intval($idOrdenFiltro);
+        }
+
+        $sql = "SELECT id_orden FROM ordenes_trabajo WHERE ($condicion) LIMIT 1";
+        $rs = mysqli_query($conexion, $sql);
+        if (!$rs) {
+            return 0;
+        }
+
+        $row = mysqli_fetch_assoc($rs);
+        return $row ? intval($row['id_orden']) : 0;
     }
 
     public function listarImagenesLiquidacionTrabajo($idLiquidacionTrabajo) {

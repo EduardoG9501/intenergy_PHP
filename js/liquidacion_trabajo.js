@@ -14,11 +14,7 @@
 
     function obtenerFiltrosLiquidacion() {
         return {
-            proyecto: $('#proyecto').val(),
-            obra: $('#obra').val(),
-            bodega: $('#bodega').val(),
-            fecha_inicial: $('#fecha_inicial').val(),
-            fecha_final: $('#fecha_final').val()
+            id_orden: ($('#id_orden').val() || '').trim()
         };
     }
 
@@ -65,7 +61,12 @@
 
     function cargarLiquidacion() {
         var filtros = obtenerFiltrosLiquidacion();
-        if (!filtros.fecha_inicial || !filtros.fecha_final) {
+        if (!filtros.id_orden) {
+            idLiquidacionActual = 0;
+            $('#txtManoObra').val('');
+            $('#txtImportante').val('');
+            renderImagenes([]);
+            limpiarPendientes();
             return;
         }
 
@@ -106,20 +107,31 @@
 
     function guardarLiquidacion() {
         var filtros = obtenerFiltrosLiquidacion();
-        if (!filtros.fecha_inicial || !filtros.fecha_final) {
-            alertify.warning('Debe seleccionar fecha inicial y final.');
+        if (!filtros.id_orden) {
+            alertify.warning('Debe ingresar el ID Orden.');
+            return;
+        }
+
+        var manoObra = ($('#txtManoObra').val() || '').trim();
+        var importante = ($('#txtImportante').val() || '').trim();
+
+        if (!manoObra) {
+            alertify.warning('Debe ingresar una descripción en MANO DE OBRA.');
+            $('#txtManoObra').focus();
+            return;
+        }
+
+        if (!importante) {
+            alertify.warning('Debe ingresar una descripción en IMPORTANTE.');
+            $('#txtImportante').focus();
             return;
         }
 
         var formData = new FormData();
         formData.append('accion', 'guardar_liquidacion');
-        formData.append('proyecto', filtros.proyecto || '');
-        formData.append('obra', filtros.obra || '');
-        formData.append('bodega', filtros.bodega || '');
-        formData.append('fecha_inicial', filtros.fecha_inicial || '');
-        formData.append('fecha_final', filtros.fecha_final || '');
-        formData.append('mano_obra', $('#txtManoObra').val() || '');
-        formData.append('importante', $('#txtImportante').val() || '');
+        formData.append('id_orden', filtros.id_orden || '');
+        formData.append('mano_obra', manoObra);
+        formData.append('importante', importante);
 
         var filesInput = document.getElementById('imagenes_liquidacion');
         if (filesInput && imagenesPendientes.length > 0) {
@@ -195,9 +207,16 @@
             setTimeout(recargarTodoPorFiltros, 250);
         });
 
-        $('#proyecto, #obra, #bodega, #fecha_inicial, #fecha_final').on('change', function() {
+        $('#id_orden').on('change', function() {
             clearTimeout(timerRecargaFiltros);
             timerRecargaFiltros = setTimeout(recargarTodoPorFiltros, 250);
+        });
+
+        $('#id_orden').on('keyup', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                recargarTodoPorFiltros();
+            }
         });
 
         renderImagenesPendientes();

@@ -63,11 +63,7 @@ switch ($accion) {
         }
 
         $filtrosGuardar = [
-            'proyecto' => isset($_POST['proyecto']) ? $_POST['proyecto'] : '',
-            'obra' => isset($_POST['obra']) ? $_POST['obra'] : '',
-            'bodega' => isset($_POST['bodega']) ? $_POST['bodega'] : '',
-            'fecha_inicial' => isset($_POST['fecha_inicial']) ? $_POST['fecha_inicial'] : '',
-            'fecha_final' => isset($_POST['fecha_final']) ? $_POST['fecha_final'] : ''
+            'id_orden' => isset($_POST['id_orden']) ? $_POST['id_orden'] : ''
         ];
 
         $manoObra = isset($_POST['mano_obra']) ? $_POST['mano_obra'] : '';

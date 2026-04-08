@@ -125,6 +125,43 @@ if (isset($_SESSION['usuario'])) {
             border: 4px solid #cde6fe;
             background: #fff;
         }
+        .filtro-id-orden-box label {
+            display: inline-block;
+            color: #1c5d99;
+            font-weight: bold;
+            margin-bottom: 0;
+            margin-right: 8px;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+        .filtro-id-orden-input {
+            width: 220px !important;
+            border: 1px solid #8fc2e6;
+            border-radius: 6px;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+        }
+        .fila-filtros-unica {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .filtro-id-orden-acciones {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .filtro-id-orden-acciones .btn,
+        .filtro-exportar-acciones .btn {
+            width: 150px;
+            margin-top: 0 !important;
+            margin-left: 0 !important;
+        }
+        .filtro-exportar-acciones {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
     </style>
 </head>
 <body>
@@ -135,39 +172,34 @@ if (isset($_SESSION['usuario'])) {
     <div class="panel-filtros">
         <form id="formFiltrosEjecucionObra" class="form-inline" autocomplete="off">
             <div class="row" style="border: 3px solid #b0daf5;padding: 5px; margin: 0.5px; background:#f7fcff;border-radius: 11px;">
-                <div class="col-sm-2">
-                    <label for="fecha_inicial">Desde:</label>
-                    <input type="date" id="fecha_inicial" name="fecha_inicial" class="form-control">
-                    <label for="fecha_final">Hasta:</label>
-                    <input type="date" id="fecha_final" name="fecha_final" class="form-control">
-                </div>
-                <div class="col-sm-3">
-                    <label for="proyecto">Proyecto:</label>
-                    <select id="proyecto" name="proyecto" class="form-control" style="width:200px"></select>
-                    <label for="obra">Nombre de la Obra:</label>
-                    <select id="obra" name="obra" class="form-control" style="width:200px"></select>
-                </div>
-                <div class="col-sm-3">
-                    <label for="bodega">B. Lugar:</label>
-                    <select id="bodega" name="bodega" class="form-control" style="width:200px"><option value="">Todos</option></select>
-                    <label for="id_orden">ID Orden:</label>
-                    <input type="text" id="id_orden" name="id_orden" class="form-control" style="width:200px" placeholder="ID ORDEN">
-                </div>
-                <div class="col-sm-2">
-                    <button type="submit" style="width: 150px; margin-top: 15px;" class="btn btn-primary">
-                        <i class="fa fa-search"></i> BUSCAR
-                    </button>
-                    <button type="button" style="width: 150px; margin-top: 10px;" id="btnGuardarLiquidacion" class="btn btn-warning">
-                        <i class="fa fa-save"></i> GUARDAR
-                    </button>
-                </div>
-                <div class="col-sm-2">
-                    <button type="button" style="width: 150px; margin-top: 15px;" id="btnExportarExcel" class="btn btn-success">
-                        <i class="fa-solid fa-file-excel"></i> Exportar a Excel
-                    </button>
-                    <button type="button" style="width: 150px; margin-top: 15px;" id="btnImprimir" class="btn btn-info">
-                        <i class="fa-solid fa-file-pdf" style="color: red;"></i> Imprimir PDF
-                    </button>
+                <div class="col-sm-12">
+                    <div class="fila-filtros-unica">
+                        <div class="filtro-id-orden-box">
+                            <label for="id_orden">ID Orden:</label>
+                            <input type="text" id="id_orden" name="id_orden" class="form-control filtro-id-orden-input" placeholder="ID ORDEN (Ej: T001)">
+                        </div>
+                        <div class="filtro-id-orden-acciones">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa fa-search"></i> BUSCAR
+                            </button>
+                            <button type="button" id="btnGuardarLiquidacion" class="btn btn-warning">
+                                <i class="fa fa-save"></i> GUARDAR
+                            </button>
+                        </div>
+                        <div class="filtro-exportar-acciones">
+                            <button type="button" id="btnExportarExcel" class="btn btn-success">
+                                <i class="fa-solid fa-file-excel"></i> Exportar a Excel
+                            </button>
+                            <button type="button" id="btnImprimir" class="btn btn-info">
+                                <i class="fa-solid fa-file-pdf" style="color: red;"></i> Imprimir PDF
+                            </button>
+                        </div>
+                    </div>
+                    <input type="hidden" id="fecha_inicial" name="fecha_inicial" value="">
+                    <input type="hidden" id="fecha_final" name="fecha_final" value="">
+                    <input type="hidden" id="proyecto" name="proyecto" value="">
+                    <input type="hidden" id="obra" name="obra" value="">
+                    <input type="hidden" id="bodega" name="bodega" value="">
                 </div>
             </div>
         </form>
@@ -294,7 +326,7 @@ window.REPORTE_INFORMES_INCLUYE_ORDEN = true;
 </div>
 <script src="../librerias/alertifyjs/alertify.min.js"></script>
 <script src="../js/reporte_ejecucion_obra.js?v=<?php echo filemtime('../js/reporte_ejecucion_obra.js'); ?>"></script>
-<script src="../js/liquidacion_trabajo.js"></script>
+<script src="../js/liquidacion_trabajo.js?v=<?php echo filemtime('../js/liquidacion_trabajo.js'); ?>"></script>
 </body>
 </html>
 <?php

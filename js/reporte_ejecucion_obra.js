@@ -10,6 +10,7 @@ var reporteEndpoint = window.REPORTE_EJECUCION_ENDPOINT || '../procesos/reportes
 var reporteTitulo = window.REPORTE_EJECUCION_TITULO || 'REPORTE DE EJECUCIÓN DE OBRA';
 var reporteArchivoBase = window.REPORTE_EJECUCION_ARCHIVO || 'reporte_ejecucion_obra';
 var esLiquidacionTrabajo = (reporteArchivoBase === 'liquidacion_trabajo');
+var exportandoPdfEjecucionObra = false;
 
 function incluyeOrdenTrabajoInformes() {
     return !!window.REPORTE_INFORMES_INCLUYE_ORDEN;
@@ -39,17 +40,18 @@ function textoDescripcionInforme(descripcion) {
 }
 
 $(document).ready(function(){
-    cargarProyectos();
-    cargarObras('');
-    cargarBodegas();
-    // Fechas por defecto
-    const hoy = new Date();
-    const yyyy = hoy.getFullYear();
-    const mm = String(hoy.getMonth() + 1).padStart(2, '0');
-    const dd = String(hoy.getDate()).padStart(2, '0');
-    const fechaHoy = `${yyyy}-${mm}-${dd}`;
-    $('#fecha_inicial').val(fechaHoy);
-    $('#fecha_final').val(fechaHoy);
+    if (!esLiquidacionTrabajo) {
+        cargarProyectos();
+        cargarObras('');
+        cargarBodegas();
+        const hoy = new Date();
+        const yyyy = hoy.getFullYear();
+        const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+        const dd = String(hoy.getDate()).padStart(2, '0');
+        const fechaHoy = `${yyyy}-${mm}-${dd}`;
+        $('#fecha_inicial').val(fechaHoy);
+        $('#fecha_final').val(fechaHoy);
+    }
 
     $('#formFiltrosEjecucionObra').on('submit', function(e){
         e.preventDefault();
@@ -61,8 +63,26 @@ $(document).ready(function(){
     $('#btnExportarExcel').on('click', function(){
         exportarExcelEjecucionObra();
     });
-    $('#btnImprimir').on('click', function(){
-        exportarPDFEjecucionObra();
+    $('#btnImprimir').off('click.reportePdf').on('click.reportePdf', async function(e){
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (exportandoPdfEjecucionObra) {
+            return;
+        }
+
+        exportandoPdfEjecucionObra = true;
+        var $btn = $(this);
+        $btn.prop('disabled', true);
+
+        try {
+            await exportarPDFEjecucionObra();
+        } finally {
+            setTimeout(function() {
+                exportandoPdfEjecucionObra = false;
+                $btn.prop('disabled', false);
+            }, 700);
+        }
     });
     // Exportar PDF completo
     async function exportarPDFEjecucionObra() {
@@ -88,7 +108,9 @@ $(document).ready(function(){
         let fecha_final = $('#fecha_final').val();
         doc.setFontSize(16);
         doc.setTextColor(40, 55, 71);
-        doc.text("DESDE: " +  fecha_inicial + " HASTA: " + fecha_final , pageWidth / 2, x, { align: "center" });
+        if (!esLiquidacionTrabajo) {
+            doc.text("DESDE: " +  fecha_inicial + " HASTA: " + fecha_final , pageWidth / 2, x, { align: "center" });
+        }
         doc.setFontSize(12);
         doc.setTextColor(44, 62, 80);
         let filtroY = 100;
@@ -99,11 +121,13 @@ $(document).ready(function(){
         const manoObra = esLiquidacionTrabajo ? ($('#txtManoObra').val() || '').trim() : '';
         const importante = esLiquidacionTrabajo ? ($('#txtImportante').val() || '').trim() : '';
         const imagenesLiquidacion = esLiquidacionTrabajo ? await obtenerImagenesLiquidacionBase64() : [];
-        doc.text(`Proyecto: ${proyecto}`, 50, filtroY); filtroY += 16;
-        doc.text(`Nombre de la Obra: ${obra}`, 50, filtroY); filtroY += 16;
-        doc.text(`Lugar: ${lugar}`, 50, filtroY); filtroY += 16;
+        if (!esLiquidacionTrabajo) {
+            doc.text(`Proyecto: ${proyecto}`, 50, filtroY); filtroY += 16;
+            doc.text(`Nombre de la Obra: ${obra}`, 50, filtroY); filtroY += 16;
+            doc.text(`Lugar: ${lugar}`, 50, filtroY); filtroY += 16;
+            doc.text('Artículos: Todos', 50, filtroY); filtroY += 10;
+        }
         doc.text(`ID Orden: ${idOrdenFiltro}`, 50, filtroY); filtroY += 16;
-        doc.text('Artículos: Todos', 50, filtroY); filtroY += 10;
 
         // Materiales
         filtroY += 18; // Espacio extra para separar el título
@@ -529,10 +553,12 @@ $(document).ready(function(){
         const sheet = workbook.addWorksheet('Ejecución de Obra');
         // Cabecera
         sheet.addRow([reporteTitulo]);
-        sheet.addRow([`Desde: ${$('#fecha_inicial').val()} Hasta: ${$('#fecha_final').val()}`]);
-        sheet.addRow([`Proyecto: ${$('#proyecto option:selected').text()}`]);
-        sheet.addRow([`Nombre de la Obra: ${$('#obra option:selected').text()}`]);
-        sheet.addRow([`Lugar: ${$('#bodega option:selected').text()}`]);
+        if (!esLiquidacionTrabajo) {
+            sheet.addRow([`Desde: ${$('#fecha_inicial').val()} Hasta: ${$('#fecha_final').val()}`]);
+            sheet.addRow([`Proyecto: ${$('#proyecto option:selected').text()}`]);
+            sheet.addRow([`Nombre de la Obra: ${$('#obra option:selected').text()}`]);
+            sheet.addRow([`Lugar: ${$('#bodega option:selected').text()}`]);
+        }
         sheet.addRow([`ID Orden: ${($('#id_orden').val() || '').trim()}`]);
         sheet.addRow([]);
         // Título y línea solo una vez
@@ -853,7 +879,20 @@ function obtenerFiltros() {
     };
 }
 
+function tieneIdOrdenParaLiquidacion() {
+    if (!esLiquidacionTrabajo) {
+        return true;
+    }
+    return (($('#id_orden').val() || '').trim() !== '');
+}
+
 function cargarMateriales() {
+    if (!tieneIdOrdenParaLiquidacion()) {
+        materialesOriginal = [];
+        materialesFiltrados = [];
+        pintarTablaMateriales([]);
+        return;
+    }
     let datos = {accion:'materiales', filtros:obtenerFiltros()};
     $.post(reporteEndpoint, datos, function(data){
         let materiales = JSON.parse(data);
@@ -917,6 +956,12 @@ function pintarTablaMateriales(materiales) {
 }
 
 function cargarHoras() {
+    if (!tieneIdOrdenParaLiquidacion()) {
+        horasOriginal = [];
+        horasFiltradas = [];
+        pintarTablaHoras([]);
+        return;
+    }
     let datos = {accion:'horas', filtros:obtenerFiltros()};
     $.post(reporteEndpoint, datos, function(data){
         let horas = JSON.parse(data);
@@ -986,6 +1031,12 @@ function pintarTablaHoras(horas) {
 }
 
 function cargarInformes() {
+    if (!tieneIdOrdenParaLiquidacion()) {
+        informesOriginal = [];
+        informesFiltrados = [];
+        pintarTablaInformes([]);
+        return;
+    }
     let datos = {accion:'informes', filtros:obtenerFiltros()};
     $.post(reporteEndpoint, datos, function(data){
         let informes = JSON.parse(data);
