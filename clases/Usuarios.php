@@ -207,8 +207,8 @@
         return true;
     }
 
-    // 3. Buscar id_menu por nombre del menú
-    $sqlMenu = "SELECT id_menu FROM menu WHERE menu_hijo = '$nombreMenu' AND estado = 1 and menu_hijo not in ('BACKUP','IVA') LIMIT 1";
+    // 3. Buscar id_menu por nombre del menú o por URL (opcion)
+    $sqlMenu = "SELECT id_menu FROM menu WHERE (menu_hijo = '$nombreMenu' OR opcion = '$nombreMenu') AND estado = 1 and menu_hijo not in ('BACKUP','IVA') LIMIT 1";
     $resMenu = mysqli_query($conexion, $sqlMenu);
     $id_menu = null;
     if ($rowMenu = mysqli_fetch_assoc($resMenu)) {

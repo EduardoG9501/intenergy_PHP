@@ -47,6 +47,16 @@ class OrdenTrabajo {
         return mysqli_fetch_assoc($result);
     }
 
+    public function obraEnUso($id_obra, $id_orden_actual = null) {
+        $c = new conectar();
+        $conexion = $c->conexion();
+        $sqlExcluir = $id_orden_actual ? " AND id_orden != " . intval($id_orden_actual) : "";
+        $sql = "SELECT COUNT(*) as total FROM ordenes_trabajo WHERE id_obra = " . intval($id_obra) . " AND estado = 1 $sqlExcluir";
+        $result = mysqli_query($conexion, $sql);
+        $row = mysqli_fetch_assoc($result);
+        return intval($row['total']) > 0;
+    }
+
     public function guardar($data) {
         $c = new conectar();
         $conexion = $c->conexion();
@@ -57,6 +67,11 @@ class OrdenTrabajo {
         $data['fecha_final'] = isset($data['fecha_final']) ? $data['fecha_final'] : NULL;
         $data['id_bodega_secundaria'] = isset($data['id_bodega_secundaria']) ? $data['id_bodega_secundaria'] : NULL;
         $data['observacion'] = isset($data['observacion']) ? $data['observacion'] : '';
+        // Validar que la obra no esté en uso en otra orden activa
+        $id_orden_actual = !empty($data['id_orden']) ? intval($data['id_orden']) : null;
+        if ($this->obraEnUso($data['id_obra'], $id_orden_actual)) {
+            return ['success' => false, 'mensaje' => 'Esta obra ya está asignada a otra orden de trabajo activa'];
+        }
         if (!empty($data['id_orden'])) {
             // Editar
             $id_orden = intval($data['id_orden']);

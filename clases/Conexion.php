@@ -2,9 +2,9 @@
 
 	class conectar{
 		private $servidor="localhost";
-		private $usuario="root";
-		private $password="";
-		private $bd="intenerg_sgi";
+		private $usuario="erp_admin";
+		private $password='Farc0inf$info$';
+		private $bd="intenerg_ventas";
 
 		public function conexion(){
 			$conexion=mysqli_connect($this->servidor,

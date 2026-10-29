@@ -107,6 +107,14 @@ switch ($action) {
 		$id = $_GET['id_ejecucion_obra'];
 		echo json_encode($ejecucionObra->listarDetalle($id));
 		break;
+	case 'verificar_cierre_automatico':
+		$id = $_GET['id_ejecucion_obra'] ?? null;
+		if (!$id) {
+			echo json_encode(['cerrado' => true, 'mensaje' => 'Falta id_ejecucion_obra']);
+			exit;
+		}
+		echo json_encode($ejecucionObra->verificarCierreAutomatico($id));
+		break;
 	case 'guardar_detalle':
 		if (isset($_SESSION['bodega_seleccionada']) && $_SESSION['bodega_seleccionada'] !== '') {
 			$_POST['id_bodega_lugar'] = $_SESSION['bodega_seleccionada'];

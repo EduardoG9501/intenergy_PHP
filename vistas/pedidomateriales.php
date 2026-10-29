@@ -87,10 +87,10 @@ if (!$acceso) {
 						</div>
 					</div>
 				</div>
-				<div class="modal-footer form-acciones" style="text-align: center;"> 
-					<button type="button" id="btnCancelar" class="btn btn-danger">CANCELAR</button>
-					<button type="submit" id="btnGuardar" class="btn btn-success">GUARDAR</button>
-				</div>
+			<div class="modal-footer form-acciones" style="text-align: center;"> 
+				<button type="button" id="btnCancelar" class="btn btn-danger">CANCELAR</button>
+				<button type="submit" id="btnGuardar" class="btn btn-success">CERRAR PEDIDO</button>
+			</div>
 			</form>
 		</div>
 	</div>
@@ -183,7 +183,11 @@ function cargarPedidos() {
 		});
 }
 function cargarOrdenes() {
-    return fetch(`../procesos/pedido_materiales/proceso_pedido_material.php?action=ordenes`)
+    let url = `../procesos/pedido_materiales/proceso_pedido_material.php?action=ordenes`;
+    if (window._idOrdenTrabajo) {
+        url += `&id_orden=${window._idOrdenTrabajo}`;
+    }
+    return fetch(url)
         .then(resp => resp.json())
         .then(ordenes => {
             const sel = document.getElementById('id_orden');
@@ -340,18 +344,32 @@ function guardarPedido() {
 	})
 	.then(resp => resp.json())
 	.then(r => {
-		Swal.fire({
-			title: r.mensaje,
-			icon: r.success ? "success" : "warning",
-			draggable: true,
-		}); 
 		if(r.success) {
-			document.getElementById('formModal').style.display = 'none';
-			if (window._idOrdenTrabajo) {
-				cargarPedidosPorOrden(window._idOrdenTrabajo);
-			} else {
-				cargarPedidos();
-			}
+			fetch('../procesos/pedido_materiales/proceso_pedido_material.php', {
+				method: 'POST',
+				headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+				body: 'action=cerrar_pedido&id_pedido_material=' + r.id_pedido_material
+			})
+			.then(resp => resp.json())
+			.then(rc => {
+				Swal.fire({
+					title: rc.mensaje,
+					icon: rc.success ? "success" : "warning",
+					draggable: true,
+				});
+				document.getElementById('formModal').style.display = 'none';
+				if (window._idOrdenTrabajo) {
+					cargarPedidosPorOrden(window._idOrdenTrabajo);
+				} else {
+					cargarPedidos();
+				}
+			});
+		} else {
+			Swal.fire({
+				title: r.mensaje,
+				icon: "warning",
+				draggable: true,
+			});
 		}
 	});
 }

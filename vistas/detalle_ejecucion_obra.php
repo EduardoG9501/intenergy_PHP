@@ -24,8 +24,9 @@ if(isset($_SESSION['usuario'])){
 <body>
 <div class="container">
 	<button id="btnRegresar" class="btn btn-warning">&#8592; Regresar</button>
-	<label class="label-custom">ID Ejecución: <?php echo  $id_ejecucion_obra;  ?> </label>  
-	<label class="label-custom">ESTADO Ejecución: <?php if ($id_estado_ejecucion_obra === "1") { echo "PENDIENTE";} elseif ($id_estado_ejecucion_obra === "2") echo "TERMINADO" ; ?> </label>  
+	<label class="label-custom">ID Ejecución: <?php echo  $id_ejecucion_obra;  ?> </label>
+	<label class="label-custom">ESTADO Ejecución: <?php if ($id_estado_ejecucion_obra === "1") { echo "PENDIENTE";} elseif ($id_estado_ejecucion_obra === "2") echo "TERMINADO" ; ?> </label>
+	<label id="estadoDiaLabel" class="label-custom" style="padding: 4px 10px; border-radius: 4px; font-weight: bold; color: #fff; background: #f0ad4e;">Estado del día: <span id="estadoDiaTexto">CARGANDO...</span></label>
 	<button type="button" class="btn btn-primary" id="exportDetalleExcel"><i class="fa fa-file-excel"></i> Exportar a Excel</button>
 	<button type="button" class="btn btn-danger" id="imprimirDetallePDF"><i class="fa fa-file-pdf"></i> Imprimir PDF</button>
 	<!-- Logo oculto para PDF -->
@@ -56,8 +57,8 @@ if(isset($_SESSION['usuario'])){
 						   <div>
 							   <button title="Agregar artículo" type="submit" id="btnGuardarDetalle" class="btn btn-info"><i class="glyphicon glyphicon-plus-sign"></i> AGREGAR</button>
 							   <button type="button" id="btnCancelarDetalle" class="btn btn-danger" style="display:none; margin-left:8px;">CANCELAR</button>
-							   <button title="Guardar todo" type="button" id="btnGuardarGeneral" class="btn btn-success" style="margin-left:8px;"><i class="glyphicon glyphicon-ok-sign"></i> GUARDAR</button>
 						   </div>
+						   <div id="infoCierre" style="margin-top: 8px; font-size: 12px; color: #555;"></div>
 					</div>
 				</div>
 			</form>
@@ -120,23 +121,41 @@ function fijarBodegaActivaDetalleEjecucion() {
 }
 
 // Verifica si ya está contabilizado para bloquear edición
+// y realiza el cierre automático cuando el día de la ejecución ya terminó
 function verificarContabilizado() {
 	const id = <?= $id_ejecucion_obra ?>;
-	fetch(`../procesos/ejecucion_obra/proceso_ejecucion_obra.php?action=listar_detalle&id_ejecucion_obra=${id}`)
+	fetch(`../procesos/ejecucion_obra/proceso_ejecucion_obra.php?action=verificar_cierre_automatico&id_ejecucion_obra=${id}`)
 		.then(resp => resp.json())
 		.then(data => {
-				       contabilizado = data.some(det => det.Contabilizado == 1);
-					   if (contabilizado) {
-					       document.getElementById('formDetalle').querySelectorAll('input, select, button').forEach(el => {
-						       if (el.id !== 'btnGuardarGeneral') el.disabled = true;
-					       });
-				       } else {
-					       document.getElementById('formDetalle').querySelectorAll('input, select, button').forEach(el => {
-						       if (el.id !== 'btnGuardarGeneral') el.disabled = false;
-					       });
-						   fijarBodegaActivaDetalleEjecucion();
-				       }
+			contabilizado = !!data.cerrado;
+			aplicarEstadoFormulario(contabilizado, data);
 		});
+}
+
+function aplicarEstadoFormulario(cerrado, data) {
+	const label = document.getElementById('estadoDiaLabel');
+	const labelText = document.getElementById('estadoDiaTexto');
+	const infoCierre = document.getElementById('infoCierre');
+	if (cerrado) {
+		label.style.background = '#d9534f';
+		labelText.textContent = 'CERRADO (CIERRE AUTOMÁTICO)';
+		if (data && data.fecha_cierre) {
+			infoCierre.innerHTML = `<i class="glyphicon glyphicon-time"></i> Cerrado automáticamente el ${data.fecha_cierre}`;
+		} else {
+			infoCierre.innerHTML = '<i class="glyphicon glyphicon-lock"></i> El día de esta ejecución ya fue cerrado. No se pueden agregar más materiales.';
+		}
+		document.getElementById('formDetalle').querySelectorAll('input, select, button').forEach(el => {
+			el.disabled = true;
+		});
+	} else {
+		label.style.background = '#5cb85c';
+		labelText.textContent = 'ABIERTO - Puede agregar materiales';
+		infoCierre.innerHTML = '<i class="glyphicon glyphicon-info-sign"></i> El cierre se realizará automáticamente al finalizar el día.';
+		document.getElementById('formDetalle').querySelectorAll('input, select, button').forEach(el => {
+			el.disabled = false;
+		});
+		fijarBodegaActivaDetalleEjecucion();
+	}
 }
 document.addEventListener('DOMContentLoaded', () => {
 	cargarArticulos();
@@ -175,53 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	}
 	
-	document.getElementById('btnGuardarGeneral').onclick = function(){
-		   if (contabilizado) {
-			   Swal.fire({
-				   icon: 'info',
-				   title: 'Ya contabilizado',
-				   text: 'Los detalles ya han sido contabilizados y no se puede volver a guardar.'
-			   });
-			   return;
-		   }
-		   Swal.fire({
-			   title: '¿Desea generar el movimiento de SALIDA/DESCARGO?',
-			   text: 'Esta acción contabilizará todos los detalles y no podrá editar ni agregar más ítems.',
-			   icon: 'question',
-			   showCancelButton: true,
-			   confirmButtonText: 'Sí, generar movimiento',
-			   cancelButtonText: 'No, cancelar'
-		   }).then((result) => {
-			   if (result.isConfirmed) {
-				   fetch('../procesos/ejecucion_obra/proceso_ejecucion_obra.php', {
-					   method: 'POST',
-					   body: new URLSearchParams({
-						   action: 'contabilizar',
-						   id_ejecucion_obra: <?= $id_ejecucion_obra ?>
-					   })
-				   })
-				   .then(resp => resp.json())
-				   .then(r => {
-					   if (r.success) {
-						   Swal.fire({
-							   icon: 'success',
-							   title: 'Movimiento generado',
-							   text: r.mensaje
-						   }).then(() => {
-							   window.location.href = 'ejecucionobra.php';
-						   });
-						   contabilizado = true;
-						   document.getElementById('formDetalle').querySelectorAll('input, select, button').forEach(el => {
-							   if (el.id !== 'btnGuardarGeneral') el.disabled = true;
-						   });
-					   } else {
-						   Swal.fire({ icon: 'error', title: 'Error', text: r.mensaje });
-					   }
-				   });
-			   }
-			   // Si cancela, no hacer nada
-		   });
-	};
+	document.getElementById('btnGuardarGeneral').remove();
 		 
 	const formDetalle = document.getElementById('formDetalle');
 	const btnCancelarDetalle = document.getElementById('btnCancelarDetalle');
@@ -269,12 +242,10 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 			return false;
 		}
-		validarArticuloDuplicadoAntesDeGuardar(function() {
-			validarStockAntesDeGuardar(function(stockOk) {
-				if (stockOk) {
-					guardarDetalle();
-				}
-			});
+		validarStockAntesDeGuardar(function(stockOk) {
+			if (stockOk) {
+				guardarDetalle();
+			}
 		});
 	};
 
@@ -311,19 +282,8 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	function validarArticuloDuplicadoAntesDeGuardar(callback) {
-		var id_producto = document.getElementById('id_producto').value;
-		var id_detalle = document.getElementById('id_ejecucion_obra_detalle_materiales_utilizar').value;
-		// Validación de duplicados SOLO si es nuevo
-		if (!id_detalle) {
-			if (window.detallesActualesIds && window.detallesActualesIds.includes(id_producto)) {
-				Swal.fire({
-					title: 'Artículo ya agregado',
-					text: 'No se puede agregar dos veces el mismo artículo en la misma ejecución.',
-					icon: 'warning'
-				});
-				return;
-			}
-		}
+		// Validación de duplicados deshabilitada: ahora se puede pedir el mismo material
+		// varias veces en el día (distintas horas o cantidades).
 		callback();
 	}
 	btnCancelarDetalle.onclick = function() {
@@ -450,9 +410,9 @@ function pintarGridDetalle(detalles) {
 	 tbody.innerHTML = '';
 		detalles.forEach(det => {
 			const tr = document.createElement('tr');
-			let acciones = ''; 
-			// Solo deshabilitar si es exactamente '1' o 1
-			if (String(det.Contabilizado).trim() === "1") {
+			let acciones = '';
+			// Deshabilitar si el día ya fue cerrado (contabilización automática)
+			if (contabilizado) {
 				acciones = `
 					<button disabled class=\"btn btn-warning\" onclick='editarDetalle(${JSON.stringify(det)})'><i class=\"glyphicon glyphicon-edit\"></i></button>
 					<button disabled class=\"btn btn-danger\" onclick='eliminarDetalle(${det.id_ejecucion_obra_detalle_materiales_utilizar})'><i class=\"glyphicon glyphicon-trash\"></i></button>

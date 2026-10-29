@@ -120,14 +120,40 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 function cargarArticulos() {
 	 fetch('../procesos/pedido_materiales/proceso_pedido_material.php?action=articulos')
-	.then(resp => resp.json())
-	.then(data => {
+	.then(resp => {
+		if (!resp.ok) throw new Error('HTTP ' + resp.status);
+		return resp.text();
+	})
+	.then(text => {
+		let data;
+		try {
+			data = JSON.parse(text);
+		} catch(e) {
+			console.error('Respuesta no JSON:', text);
+			const sel = document.getElementById('id_producto');
+			sel.innerHTML = '<option value="">Error: respuesta del servidor no válida</option>';
+			return;
+		}
 		const sel = document.getElementById('id_producto');
 		sel.innerHTML = '';
+		if (!Array.isArray(data) || data.length === 0) {
+			sel.innerHTML = '<option value="">No hay artículos disponibles</option>';
+			return;
+		}
 		data.forEach(a => {
 			sel.innerHTML += `<option value="${a.id_producto}">${a.nombre}</option>`;
 		});
-		$('#id_producto').select2();
+		if (window.jQuery && $.fn.select2) {
+			if ($('#id_producto').hasClass('select2-hidden-accessible')) {
+				$('#id_producto').select2('destroy');
+			}
+			$('#id_producto').select2();
+		}
+	})
+	.catch(err => {
+		console.error('Error cargando artículos:', err);
+		const sel = document.getElementById('id_producto');
+		sel.innerHTML = '<option value="">Error: ' + err.message + '</option>';
 	});
 }
 function cargarDetalle() {
@@ -135,8 +161,19 @@ function cargarDetalle() {
 	fetch(`../procesos/pedido_materiales/proceso_pedido_material.php?action=listar_detalle&id_pedido_material=${id}`)
 	.then(resp => resp.json())
 	.then(data => {
+		if (!Array.isArray(data)) {
+			console.error('Respuesta no es array:', data);
+			pintarGridDetalle([]);
+			window.detallesActualesIds = [];
+			return;
+		}
 		pintarGridDetalle(data);
 		window.detallesActualesIds = data.map(det => det.id_producto ? det.id_producto.toString() : "");
+	})
+	.catch(err => {
+		console.error('Error cargando detalle:', err);
+		pintarGridDetalle([]);
+		window.detallesActualesIds = [];
 	});
 }
 function guardarDetalle() {
@@ -228,8 +265,9 @@ function eliminarDetalle(id) {
     });
 }
 function pintarGridDetalle(detalles) {
-    // Elimina la actualización aquí para evitar desincronización
-    // window.detallesActualesIds = detalles.map(det => det.id_producto ? det.id_producto.toString() : "");
+    if (!Array.isArray(detalles)) {
+        detalles = [];
+    }
     detallesActuales = detalles.map(det => det.articulo_nombre);
     const $grid = $('#gridDetalle');
     if ($.fn.DataTable.isDataTable($grid)) {

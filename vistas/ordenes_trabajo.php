@@ -357,6 +357,15 @@ label {
         })
         .then(resp => resp.json())
         .then(r => {
+            if (r.success === false) {
+                document.getElementById('formModal').style.display = 'none';
+                Swal.fire({
+                    title: r.mensaje,
+                    icon: "warning",
+                    draggable: true,
+                });
+                return;
+            }
             document.getElementById('formModal').style.display = 'none';
             // Modal de opciones tras crear orden
             if (r.success && r.id_orden) {

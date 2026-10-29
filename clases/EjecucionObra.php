@@ -371,4 +371,64 @@
 		public function getEjecucionObra($id) {
 		return $this->obtener($id);
 	}
+
+	// Verifica el estado del día de una ejecución y, si corresponde, realiza el cierre automático
+	// Reglas:
+	//   - Si la fecha_solicitud es anterior a hoy y aún hay detalles sin contabilizar,
+	//     se ejecuta el cierre automático (contabiliza y genera movimiento SALIDA/DESCARGO).
+	//   - Devuelve { cerrado: bool, fecha_cierre, mensaje }
+	public function verificarCierreAutomatico($id_ejecucion_obra) {
+		$c = new conectar();
+		$conexion = $c->conexion();
+		$id_ejecucion_obra = intval($id_ejecucion_obra);
+		$ejec = $this->obtener($id_ejecucion_obra);
+		if (!$ejec) {
+			return ['cerrado' => true, 'mensaje' => 'Ejecución no encontrada.'];
+		}
+		$fecha_solicitud = $ejec['fecha_solicitud'];
+		$hoy = date('Y-m-d');
+		// ¿Ya está contabilizado todo?
+		$sql_pend = "SELECT COUNT(*) AS total FROM ejecucion_obra_detalle_materiales_utilizar
+					 WHERE id_ejecucion_obra = $id_ejecucion_obra AND Contabilizado = 0 AND Estado = 1";
+		$res_pend = mysqli_query($conexion, $sql_pend);
+		$row_pend = $res_pend ? mysqli_fetch_assoc($res_pend) : ['total' => 0];
+		$pendientes = intval($row_pend['total']);
+		$todo_contabilizado = ($pendientes == 0);
+		$fecha_pasada = (strtotime($fecha_solicitud) < strtotime($hoy));
+		if ($todo_contabilizado) {
+			// Buscar fecha del último movimiento generado
+			$sql_fecha = "SELECT MAX(m.fechaDocumento) AS fecha
+						  FROM movimientos m
+						  WHERE m.no_documento LIKE 'EJEC-$id_ejecucion_obra-BOD-%'";
+			$res_fecha = mysqli_query($conexion, $sql_fecha);
+			$row_fecha = $res_fecha ? mysqli_fetch_assoc($res_fecha) : null;
+			return [
+				'cerrado' => true,
+				'fecha_cierre' => $row_fecha && $row_fecha['fecha'] ? $row_fecha['fecha'] : $fecha_solicitud,
+				'mensaje' => 'La ejecución ya fue contabilizada.'
+			];
+		}
+		if ($fecha_pasada) {
+			// Cierre automático
+			$usuario = $_SESSION['usuario'] ?? 'sistema';
+			$resultado = $this->contabilizarYGenerarMovimiento($id_ejecucion_obra, $usuario);
+			if (!empty($resultado['success'])) {
+				return [
+					'cerrado' => true,
+					'fecha_cierre' => $hoy,
+					'mensaje' => 'Cierre automático realizado al finalizar el día.'
+				];
+			}
+			return [
+				'cerrado' => false,
+				'mensaje' => 'No se pudo realizar el cierre automático: ' . ($resultado['mensaje'] ?? 'Error desconocido')
+			];
+		}
+		// Día abierto
+		return [
+			'cerrado' => false,
+			'fecha_solicitud' => $fecha_solicitud,
+			'mensaje' => 'El día aún está abierto.'
+		];
+	}
 }

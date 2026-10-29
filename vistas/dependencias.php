@@ -1,4 +1,3 @@
-
 <?php
 $PAIS = "ni"; // "ec" para Ecuador, "ni" para Nicaragua
 
@@ -42,9 +41,7 @@ if ($PAIS == "ec") {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"> 
 
-<!-- JS de Select2 (después de jQuery) Para buscador Dinamico -->
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
+<!-- JS de Select2 ya cargado localmente arriba -->
 <!-- Exportar a excel -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
